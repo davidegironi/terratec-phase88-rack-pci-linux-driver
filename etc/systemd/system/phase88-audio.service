@@ -1,0 +1,25 @@
+# TerraTec PHASE 88: make the patched driver and sane mixer levels the
+# default for this machine.
+#
+#   systemctl status phase88-audio.service
+#   systemctl start  phase88-audio.service     (re-apply after a change)
+#   systemctl disable phase88-audio.service    (hand the mixer back to you)
+#
+# The patched snd-ice1712.ko is installed in /lib/modules/<kver>/updates/, so
+# udev already loads it automatically (modprobe below is only a guarantee, and
+# it resolves the snd-* dependencies, which a plain insmod would not).
+# See /root/terratec/analysis/README.md for the driver change itself.
+[Unit]
+Description=TerraTec PHASE 88: patched snd_ice1712 driver + mixer defaults
+Documentation=file:/root/terratec/analysis/README.md
+After=systemd-modules-load.service
+Before=sound.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/modprobe snd_ice1712
+ExecStart=/root/terratec/scripts/phase88-mixer.sh
+
+[Install]
+WantedBy=multi-user.target

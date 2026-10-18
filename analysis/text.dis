@@ -1,0 +1,1159 @@
+            ; CALL XREF from entry0 @ 0x24147(x)
+┌ 58: section.INIT ();
+│           0x00024100      56             push esi                    ; [04] -rwx section size 2304 named INIT
+│           0x00024101      be00000080     mov esi, 0x80000000
+│           ; CODE XREF from section.INIT @ 0x24136(x)
+│       ┌─> 0x00024106      56             push esi
+│       ╎   0x00024107      68f80c0000     push 0xcf8                  ; 3320
+│       ╎   0x0002410c      ff1508cf0100   call dword [sym.imp.HAL.DLL_WRITE_PORT_ULONG] ; 0x1cf08
+│       ╎   0x00024112      68fc0c0000     push 0xcfc                  ; 3324
+│       ╎   0x00024117      ff1504cf0100   call dword [sym.imp.HAL.DLL_READ_PORT_ULONG] ; 0x1cf04
+│       ╎   0x0002411d      3d12141217     cmp eax, 0x17121412         ; '\x12\x14\x12\x17'
+│      ┌──< 0x00024122      7506           jne 0x2412a
+│      │╎   0x00024124      ff0558ee0100   inc dword [0x1ee58]         ; [0x1ee58:4]=0
+│      │╎   ; CODE XREF from section.INIT @ 0x24122(x)
+│      └──> 0x0002412a      81c600010000   add esi, 0x100              ; 256
+│       ╎   0x00024130      81fe007f2080   cmp esi, 0x80207f00
+│       └─< 0x00024136      76ce           jbe 0x24106
+│           0x00024138      5e             pop esi
+└           0x00024139      c3             ret
+            ;-- eip:
+┌ 195: entry0 (int32_t arg_8h, int32_t arg_ch);
+│ `- args(sp[0x4..0x8]) vars(2:sp[0xc..0x14])
+│           0x0002413a      55             push ebp
+│           0x0002413b      8bec           mov ebp, esp
+│           0x0002413d      83ec10         sub esp, 0x10
+│           0x00024140      56             push esi
+│           0x00024141      57             push edi
+│           0x00024142      e8b9c1feff     call fcn.00010300
+│           0x00024147      e8b4ffffff     call section.INIT
+│           0x0002414c      8b7508         mov esi, dword [arg_8h]
+│           0x0002414f      68bc090200     push 0x209bc
+│           0x00024154      ff750c         push dword [arg_ch]
+│           0x00024157      56             push esi
+│           0x00024158      ff1504d00100   call dword [sym.imp.portcls.sys_PcInitializeAdapterDriver] ; 0x1d004 ; "DI\x01"
+│           0x0002415e      832510ee01..   and dword [0x1ee10], 0      ; [0x1ee10:4]=0
+│           0x00024165      8bc8           mov ecx, eax
+│           0x00024167      33c0           xor eax, eax
+│           0x00024169      85c9           test ecx, ecx
+│           0x0002416b      bf1cee0100     mov edi, 0x1ee1c
+│           0x00024170      ab             stosd dword es:[edi], eax
+│           0x00024171      ab             stosd dword es:[edi], eax
+│           0x00024172      ab             stosd dword es:[edi], eax
+│           0x00024173      ab             stosd dword es:[edi], eax
+│       ┌─< 0x00024174      7c7f           jl 0x241f5
+│       │   0x00024176      8b4670         mov eax, dword [esi + 0x70]
+│       │   0x00024179      8b3d30cf0100   mov edi, dword [sym.imp.NTOSKRNL.EXE_RtlInitUnicodeString] ; [0x1cf30:4]=0x144dc reloc.NTOSKRNL.EXE_RtlInitUnicodeString
+│       │   0x0002417f      a314ee0100     mov dword [0x1ee14], eax    ; [0x1ee14:4]=0
+│       │   0x00024184      b81cf10100     mov eax, 0x1f11c
+│       │   0x00024189      894638         mov dword [esi + 0x38], eax
+│       │   0x0002418c      894640         mov dword [esi + 0x40], eax
+│       │   0x0002418f      894644         mov dword [esi + 0x44], eax
+│       │   0x00024192      894648         mov dword [esi + 0x48], eax
+│       │   0x00024195      894678         mov dword [esi + 0x78], eax
+│       │   0x00024198      682a420200     push 0x2422a
+│       │   0x0002419d      8d45f8         lea eax, [var_8h]
+│       │   0x000241a0      50             push eax
+│       │   0x000241a1      c74670a604..   mov dword [esi + 0x70], 0x204a6 ; [0x204a6:4]=0x8bec8b55
+│       │   0x000241a8      ffd7           call edi
+│       │   0x000241aa      682cee0100     push 0x1ee2c
+│       │   0x000241af      6a00           push 0
+│       │   0x000241b1      6a00           push 0
+│       │   0x000241b3      6a22           push 0x22                   ; '\"' ; 34
+│       │   0x000241b5      8d45f8         lea eax, [var_8h]
+│       │   0x000241b8      50             push eax
+│       │   0x000241b9      6a04           push 4                      ; 4
+│       │   0x000241bb      56             push esi
+│       │   0x000241bc      ff152ccf0100   call dword [sym.imp.NTOSKRNL.EXE_IoCreateDevice] ; 0x1cf2c
+│       │   0x000241c2      85c0           test eax, eax
+│      ┌──< 0x000241c4      7c31           jl 0x241f7
+│      ││   0x000241c6      a12cee0100     mov eax, dword [0x1ee2c]    ; [0x1ee2c:4]=0
+│      ││   0x000241cb      8b4028         mov eax, dword [eax + 0x28]
+│      ││   0x000241ce      8b0d54ee0100   mov ecx, dword [0x1ee54]    ; [0x1ee54:4]=0
+│      ││   0x000241d4      8908           mov dword [eax], ecx
+│      ││   0x000241d6      68fe410200     push 0x241fe
+│      ││   0x000241db      8d45f0         lea eax, [var_10h]
+│      ││   0x000241de      50             push eax
+│      ││   0x000241df      ffd7           call edi
+│      ││   0x000241e1      8d45f8         lea eax, [var_8h]
+│      ││   0x000241e4      50             push eax
+│      ││   0x000241e5      8d45f0         lea eax, [var_10h]
+│      ││   0x000241e8      50             push eax
+│      ││   0x000241e9      ff1564cf0100   call dword [sym.imp.NTOSKRNL.EXE_IoCreateUnprotectedSymbolicLink] ; 0x1cf64
+│      ││   0x000241ef      8bc8           mov ecx, eax
+│      ││   0x000241f1      85c9           test ecx, ecx
+│     ┌───< 0x000241f3      7c02           jl 0x241f7
+│     │││   ; CODE XREF from entry0 @ 0x24174(x)
+│     ││└─> 0x000241f5      8bc1           mov eax, ecx
+│     ││    ; CODE XREFS from entry0 @ 0x241c4(x), 0x241f3(x)
+│     └└──> 0x000241f7      5f             pop edi
+│           0x000241f8      5e             pop esi
+│           0x000241f9      c9             leave
+└           0x000241fa      c20800         ret 8
+            0x000241fd      cc             int3
+            ; DATA XREF from entry0 @ 0x241d6(r)
+            0x000241fe      5c             pop esp
+            0x000241ff      0044006f       add byte [eax + eax + 0x6f], al
+            0x00024203      007300         add byte [ebx], dh
+            0x00024206      44             inc esp
+            0x00024207      006500         add byte [ebp], ah
+        ┌─< 0x0002420a      7600           jbe 0x2420c
+        │   ; CODE XREF from entry0 @ +0xd0(x)
+        └─> 0x0002420c      690063006500   imul eax, dword [eax], 0x650063 ; [0x650063:4]=-1
+        ┌─< 0x00024212      7300           jae 0x24214
+        │   ; CODE XREF from entry0 @ +0xd8(x)
+        └─> 0x00024214      5c             pop esp
+            0x00024215      004900         add byte [ecx], cl
+            0x00024218      6300           arpl word [eax], ax
+            0x0002421a      65004d00       add byte gs:[ebp], cl
+            0x0002421e      690078006500   imul eax, dword [eax], 0x650078 ; [0x650078:4]=-1
+        ┌─< 0x00024224      7200           jb 0x24226
+        │   ; CODE XREF from entry0 @ +0xea(x)
+        └─> 0x00024226      3000           xor byte [eax], al
+            0x00024228      0000           add byte [eax], al
+            ; DATA XREF from entry0 @ 0x24198(r)
+            0x0002422a      5c             pop esp
+            0x0002422b      00440065       add byte [eax + eax + 0x65], al
+            0x0002422f      007600         add byte [esi], dh
+            0x00024232      690063006500   imul eax, dword [eax], 0x650063 ; [0x650063:4]=-1
+            0x00024238      5c             pop esp
+            0x00024239      004900         add byte [ecx], cl
+            0x0002423c      6300           arpl word [eax], ax
+            0x0002423e      65004d00       add byte gs:[ebp], cl
+            0x00024242      690078006500   imul eax, dword [eax], 0x650078 ; [0x650078:4]=-1
+        ┌─< 0x00024248      7200           jb 0x2424a
+        │   ; CODE XREF from entry0 @ +0x10e(x)
+        └─> 0x0002424a      3000           xor byte [eax], al
+            0x0002424c      0000           add byte [eax], al
+            0x0002424e      cc             int3
+            0x0002424f      cc             int3
+        ┌─< 0x00024250      e042           loopne 0x24294
+        │   0x00024252      0100           add dword [eax], eax
+        │   0x00024254      0000           add byte [eax], al
+        │   0x00024256      0000           add byte [eax], al
+        │   0x00024258      0000           add byte [eax], al
+        │   0x0002425a      0000           add byte [eax], al
+        │   0x0002425c      0e             push cs
+        │   0x0002425d      48             dec eax
+        │   0x0002425e      0100           add dword [eax], eax
+        │   0x00024260      2ccf           sub al, 0xcf                ; 207
+        │   0x00024262      0000           add byte [eax], al
+        │   0x00024264      b442           mov ah, 0x42                ; 'B' ; 66
+        │   0x00024266      0100           add dword [eax], eax
+        │   0x00024268      0000           add byte [eax], al
+        │   0x0002426a      0000           add byte [eax], al
+        │   0x0002426c      0000           add byte [eax], al
+        │   0x0002426e      0000           add byte [eax], al
+        │   0x00024270      1c48           sbb al, 0x48
+        │   0x00024272      0100           add dword [eax], eax
+        │   0x00024274      00cf           add bh, cl
+        │   0x00024276      0000           add byte [eax], al
+        │   0x00024278      90             nop
+        │   0x00024279      43             inc ebx
+        │   0x0002427a      0100           add dword [eax], eax
+        │   0x0002427c      0000           add byte [eax], al
+        │   0x0002427e      0000           add byte [eax], al
+        │   0x00024280      0000           add byte [eax], al
+        │   0x00024282      0000           add byte [eax], al
+        │   0x00024284      82480100       or byte [eax + 1], 0
+        │   0x00024288      dccf           fmul st(7), st(0)
+        │   0x0002428a      0000           add byte [eax], al
+        │   0x0002428c      a4             movsb byte es:[edi], byte [esi]
+        │   0x0002428d      43             inc ebx
+        │   0x0002428e      0100           add dword [eax], eax
+        │   0x00024290      0000           add byte [eax], al
+        │   0x00024292      0000           add byte [eax], al
+        │   ; CODE XREF from entry0 @ +0x116(x)
+        └─> 0x00024294      0000           add byte [eax], al
+            0x00024296      0000           add byte [eax], al
+            0x00024298      b249           mov dl, 0x49                ; 'I' ; 73
+            0x0002429a      0100           add dword [eax], eax
+            0x0002429c      f0             invalid
+            0x0002429d      cf             iretd
+            0x0002429e      0000           add byte [eax], al
+            0x000242a0      0000           add byte [eax], al
+            0x000242a2      0000           add byte [eax], al
+            0x000242a4      0000           add byte [eax], al
+            0x000242a6      0000           add byte [eax], al
+            0x000242a8      0000           add byte [eax], al
+            0x000242aa      0000           add byte [eax], al
+            0x000242ac      0000           add byte [eax], al
+            0x000242ae      0000           add byte [eax], al
+            0x000242b0      0000           add byte [eax], al
+            0x000242b2      0000           add byte [eax], al
+            0x000242b4      82470100       add byte [edi + 1], 0
+            0x000242b8      0444           add al, 0x44                ; 68
+            0x000242ba      0100           add dword [eax], eax
+            0x000242bc      16             push ss
+            0x000242bd      44             inc esp
+            0x000242be      0100           add dword [eax], eax
+            0x000242c0      6e             outsb dx, byte [esi]
+            0x000242c1      47             inc edi
+            0x000242c2      0100           add dword [eax], eax
+            0x000242c4      5a             pop edx
+            0x000242c5      47             inc edi
+            0x000242c6      0100           add dword [eax], eax
+            0x000242c8      48             dec eax
+            0x000242c9      47             inc edi
+            0x000242ca      0100           add dword [eax], eax
+            0x000242cc      3447           xor al, 0x47                ; 71
+            0x000242ce      0100           add dword [eax], eax
+            0x000242d0      864601         xchg byte [esi + 1], al
+            0x000242d3      007246         add byte [edx + 0x46], dh
+            0x000242d6      0100           add dword [eax], eax
+            0x000242d8      e647           out 0x47, al
+            0x000242da      0100           add dword [eax], eax
+            0x000242dc      0000           add byte [eax], al
+            0x000242de      0000           add byte [eax], al
+            0x000242e0      ca4401         retf 0x144
+            0x000242e3      00dc           add ah, bl
+            0x000242e5      44             inc esp
+            0x000242e6      0100           add dword [eax], eax
+            0x000242e8      f4             hlt
+            0x000242e9      44             inc esp
+            0x000242ea      0100           add dword [eax], eax
+            0x000242ec      0c45           or al, 0x45                 ; 69
+            0x000242ee      0100           add dword [eax], eax
+            0x000242f0      16             push ss
+            0x000242f1      45             inc ebp
+            0x000242f2      0100           add dword [eax], eax
+            0x000242f4      2e45           inc ebp
+            0x000242f6      0100           add dword [eax], eax
+            0x000242f8      40             inc eax
+            0x000242f9      45             inc ebp
+            0x000242fa      0100           add dword [eax], eax
+            0x000242fc      5a             pop edx
+            0x000242fd      45             inc ebp
+            0x000242fe      0100           add dword [eax], eax
+        ┌─< 0x00024300      7445           je 0x24347
+        │   0x00024302      0100           add dword [eax], eax
+        │   0x00024304      8a4501         mov al, byte [ebp + 1]
+        │   0x00024307      00a0450100b4   add byte [eax - 0x4bfffebb], ah
+        │   0x0002430d      45             inc ebp
+        │   0x0002430e      0100           add dword [eax], eax
+        │   0x00024310      d6             salc
+        │   0x00024311      45             inc ebp
+        │   0x00024312      0100           add dword [eax], eax
+        │   0x00024314      f6450100       test byte [ebp + 1], 0
+        │   0x00024318      a844           test al, 0x44               ; 68
+        │   0x0002431a      0100           add dword [eax], eax
+        │   0x0002431c      1c46           sbb al, 0x46
+        │   0x0002431e      0100           add dword [eax], eax
+        │   0x00024320      3446           xor al, 0x46                ; 70
+        │   0x00024322      0100           add dword [eax], eax
+        │   0x00024324      48             dec eax
+        │   0x00024325      46             inc esi
+        │   0x00024326      0100           add dword [eax], eax
+        │   0x00024328      60             pushal
+        │   0x00024329      46             inc esi
+        │   0x0002432a      0100           add dword [eax], eax
+        │   0x0002432c      9c             pushfd
+        │   0x0002432d      44             inc esp
+        │   0x0002432e      0100           add dword [eax], eax
+        │   0x00024330      86440100       xchg byte [ecx + eax], al
+        │   0x00024334      9a460100aa..   lcall 0x146, 0xaa000146
+        │   0x0002433b      00ce           add dh, cl
+        │   0x0002433d      46             inc esi
+        │   0x0002433e      0100           add dword [eax], eax
+       ┌──< 0x00024340      ea46010006..   ljmp 0x147:0x6000146
+       ││   ; CODE XREF from entry0 @ +0x1c6(x)
+       │└─> 0x00024347      001c47         add byte [edi + eax*2], bl
+       │    0x0002434a      0100           add dword [eax], eax
+       │┌─< 0x0002434c      7244           jb 0x24392
+       ││   0x0002434e      0100           add dword [eax], eax
+       ││   0x00024350      52             push edx
+       ││   0x00024351      44             inc esp
+       ││   0x00024352      0100           add dword [eax], eax
+       ││   0x00024354      42             inc edx
+       ││   0x00024355      44             inc esp
+       ││   0x00024356      0100           add dword [eax], eax
+       ││   0x00024358      2a440100       sub al, byte [ecx + eax]
+      ┌───< 0x0002435c      ea4301009e..   ljmp 0x147:0x9e000143
+      │││   0x00024363      00ae470100bc   add byte [esi - 0x43fffeb9], ch
+      │││   0x00024369      47             inc edi
+      │││   0x0002436a      0100           add dword [eax], eax
+      │││   0x0002436c      d04701         rol byte [edi + 1], 1
+      │││   0x0002436f      00da           add dl, bl
+      │││   0x00024371      47             inc edi
+      │││   0x00024372      0100           add dword [eax], eax
+      │││   0x00024374      004601         add byte [esi + 1], al
+      │││   0x00024377      0002           add byte [edx], al
+      │││   0x00024379      48             dec eax
+      │││   0x0002437a      0100           add dword [eax], eax
+      │││   0x0002437c      dc4301         fadd qword [ebx + 1]
+      │││   0x0002437f      00d6           add dh, dl
+      │││   0x00024381      49             dec ecx
+      │││   0x00024382      0100           add dword [eax], eax
+      │││   0x00024384      be490100e2     mov esi, 0xe2000149
+      │││   0x00024389      49             dec ecx
+      │││   0x0002438a      0100           add dword [eax], eax
+      │││   0x0002438c      0000           add byte [eax], al
+      │││   0x0002438e      0000           add byte [eax], al
+      │││   0x00024390      6848010024     push 0x24000148
+      ││    0x00024395      48             dec eax
+      ││    0x00024396      0100           add dword [eax], eax
+      ││    0x00024398      324801         xor cl, byte [eax + 1]
+      ││    0x0002439b      004a48         add byte [edx + 0x48], cl
+      ││    0x0002439e      0100           add dword [eax], eax
+      ││    0x000243a0      0000           add byte [eax], al
+      ││    0x000243a2      0000           add byte [eax], al
+      ││    0x000243a4      c24801         ret 0x148
+      ││    0x000243a7      00da           add dl, bl
+      ││    0x000243a9      48             dec eax
+      ││    0x000243aa      0100           add dword [eax], eax
+      ││┌─< 0x000243ac      ea4801000a..   ljmp 0x149:0xa000148
+      │││   0x000243b3      00b648010044   add byte [esi + 0x44000148], dh ; [0x44000148:1]=255
+      │││   0x000243b9      49             dec ecx
+      │││   0x000243ba      0100           add dword [eax], eax
+      │││   0x000243bc      60             pushal
+      │││   0x000243bd      49             dec ecx
+      │││   0x000243be      0100           add dword [eax], eax
+     ┌────< 0x000243c0      7649           jbe 0x2440b
+     ││││   0x000243c2      0100           add dword [eax], eax
+     ││││   0x000243c4      8a4901         mov cl, byte [ecx + 1]
+     ││││   0x000243c7      009e490100a6   add byte [esi - 0x59fffeb7], bl
+     ││││   0x000243cd      48             dec eax
+     ││││   0x000243ce      0100           add dword [eax], eax
+     ││││   0x000243d0      90             nop
+     ││││   0x000243d1      48             dec eax
+     ││││   0x000243d2      0100           add dword [eax], eax
+     ││││   0x000243d4      2e49           dec ecx
+     ││││   0x000243d6      0100           add dword [eax], eax
+     ││││   0x000243d8      0000           add byte [eax], al
+     ││││   0x000243da      0000           add byte [eax], al
+     ││││   0x000243dc      1500457846     adc eax, 0x46784500
+    ┌─────< 0x000243e1      7265           jb 0x24448
+    │││││   0x000243e3      6550           push eax
+    │││││   0x000243e5      6f             outsd dx, dword [esi]
+    │││││   0x000243e6      6f             outsd dx, dword [esi]
+    │││││   0x000243e7      6c             insb byte es:[edi], dx
+    │││││   0x000243e8      0000           add byte [eax], al
+   ┌──────< 0x000243ea      7700           ja 0x243ec
+   ││││││   ; CODE XREF from entry0 @ +0x2b0(x)
+   └──────> 0x000243ec      49             dec ecx
+    │││││   0x000243ed      6f             outsd dx, dword [esi]
+    │││││   0x000243ee      49             dec ecx
+   ┌──────< 0x000243ef      7357           jae 0x24448
+   ││││││   0x000243f1      646d           insd dword es:[edi], dx
+   ││││││   0x000243f3      56             push esi
+  ┌───────< 0x000243f4      657273         jb 0x2446a
+  │││││││   0x000243f7      696f6e4176..   imul ebp, dword [edi + 0x6e], 0x69617641 ; [0x69617641:4]=-1
+  │││││││   0x000243fe      6c             insb byte es:[edi], dx
+  │││││││   0x000243ff      61             popal
+  │││││││   0x00024400      626c6500       bound ebp, qword [ebp]
+  │││││││   0x00024404      0e             push cs
+  │││││││   0x00024405      005245         add byte [edx + 0x45], dl
+  │││││││   0x00024408      41             inc ecx
+  │││││││   0x00024409      44             inc esp
+  │││││││   0x0002440a      5f             pop edi
+  │││││││   ; CODE XREF from entry0 @ +0x286(x)
+  │││└────> 0x0002440b      50             push eax
+  │││ │││   0x0002440c      4f             dec edi
+  │││ │││   0x0002440d      52             push edx
+  │││ │││   0x0002440e      54             push esp
+  │││ │││   0x0002440f      5f             pop edi
+  │││ │││   0x00024410      55             push ebp
+  │││ │││   0x00024411      4c             dec esp
+  │││ │││   0x00024412      4f             dec edi
+  │││ │││   0x00024413      4e             dec esi
+  │││ │││   0x00024414      47             inc edi
+  │││ │││   0x00024415      001400         add byte [eax + eax], dl
+  │││ │││   0x00024418      57             push edi
+  │││ │││   0x00024419      52             push edx
+  │││ │││   0x0002441a      49             dec ecx
+  │││ │││   0x0002441b      54             push esp
+  │││ │││   0x0002441c      45             inc ebp
+  │││ │││   0x0002441d      5f             pop edi
+  │││ │││   0x0002441e      50             push eax
+  │││ │││   0x0002441f      4f             dec edi
+  │││ │││   0x00024420      52             push edx
+  │││ │││   0x00024421      54             push esp
+  │││ │││   0x00024422      5f             pop edi
+  │││ │││   0x00024423      55             push ebp
+  │││ │││   0x00024424      4c             dec esp
+  │││ │││   0x00024425      4f             dec edi
+  │││ │││   0x00024426      4e             dec esi
+  │││ │││   0x00024427      47             inc edi
+  │││ │││   0x00024428      0000           add byte [eax], al
+  │││ │││   0x0002442a      d6             salc
+  │││ │││   0x0002442b      004b65         add byte [ebx + 0x65], cl
+  │││ │││   0x0002442e      57             push edi
+  │││ │││   0x0002442f      61             popal
+  │││ │││   0x00024430      6974466f72..   imul esi, dword [esi + eax*2 + 0x6f], 0x6e695372 ; [0x6e695372:4]=-1
+  │││ │││   0x00024438      676c           insb byte es:[di], dx
+  │││ │││   0x0002443a      654f           dec edi
+  │││ │││   0x0002443c      626a65         bound ebp, qword [edx + 0x65]
+  │││ │││   0x0002443f      637400a0       arpl word [eax + eax - 0x60], si
+  │││ │││   0x00024443      00496f         add byte [ecx + 0x6f], cl
+  │││ │││   0x00024446      6643           inc bx
+  │││ │││   ; CODE XREFS from entry0 @ +0x2a7(x), +0x2b5(x)
+  │└└─────> 0x00024448      61             popal
+  │   │││   0x00024449      6c             insb byte es:[edi], dx
+  │   │││   0x0002444a      6c             insb byte es:[edi], dx
+  │   │││   0x0002444b      44             inc esp
+  │  ┌────< 0x0002444c      7269           jb 0x244b7
+  │ ┌─────< 0x0002444e      7665           jbe 0x244b5
+  │┌──────< 0x00024450      7200           jb 0x24452
+  │││││││   ; CODE XREF from entry0 @ +0x316(x)
+  │└──────> 0x00024452      4f             dec edi
+  │ │││││   0x00024453      00496f         add byte [ecx + 0x6f], cl
+  │ │││││   0x00024456      42             inc edx
+  │┌──────< 0x00024457      7569           jne 0x244c2
+  │││││││   0x00024459      6c             insb byte es:[edi], dx
+  │││││││   0x0002445a      6453           push ebx
+  ────────< 0x0002445c      796e           jns 0x244cc
+  │││││││   0x0002445e      636872         arpl word [eax + 0x72], bp
+  │││││││   0x00024461      6f             outsd dx, dword [esi]
+  │││││││   0x00024462      6e             outsb dx, byte [esi]
+  │││││││   0x00024463      6f             outsd dx, dword [esi]
+  ────────< 0x00024464      7573           jne 0x244d9
+  │││││││   0x00024466      46             inc esi
+  ────────< 0x00024467      7364           jae 0x244cd
+  │││││││   0x00024469      52             push edx
+  │││││││   ; CODE XREF from entry0 @ +0x2ba(x)
+  └───────> 0x0002446a      657175         jno 0x244e2
+  ┌───────< 0x0002446d      657374         jae 0x244e4
+  │││││││   0x00024470      0000           add byte [eax], al
+  │││││││   0x00024472      b000           mov al, 0
+  │││││││   0x00024474      4b             dec ebx
+  │││││││   0x00024475      6549           dec ecx
+  │││││││   0x00024477      6e             outsb dx, byte [esi]
+  │││││││   0x00024478      697469616c..   imul esi, dword [ecx + ebp*2 + 0x61], 0x657a696c ; [0x657a696c:4]=-1
+  │││││││   0x00024480      45             inc ebp
+  ────────< 0x00024481      7665           jbe 0x244e8
+  │││││││   0x00024483      6e             outsb dx, byte [esi]
+  ────────< 0x00024484      7400           je 0x24486
+  │││││││   ; CODE XREF from entry0 @ +0x34a(x)
+  ────────> 0x00024486      a100496f66     mov eax, dword [0x666f4900] ; [0x666f4900:4]=-1
+  │││││││   0x0002448b      43             inc ebx
+  │││││││   0x0002448c      6f             outsd dx, dword [esi]
+  │││││││   0x0002448d      6d             insd dword es:[edi], dx
+  ────────< 0x0002448e      706c           jo 0x244fc
+  ────────< 0x00024490      657465         je 0x244f8
+  │││││││   0x00024493      52             push edx
+  ────────< 0x00024494      657175         jno 0x2450c
+  ────────< 0x00024497      657374         jae 0x2450e
+  │││││││   0x0002449a      0000           add byte [eax], al
+  │││││││   0x0002449c      0300           add eax, dword [eax]
+  │││││││   0x0002449e      44             inc esp
+  │││││││   0x0002449f      626750         bound esp, qword [edi + 0x50]
+  ────────< 0x000244a2      7269           jb 0x2450d
+  │││││││   0x000244a4      6e             outsb dx, byte [esi]
+  ────────< 0x000244a5      7400           je 0x244a7
+  │││││││   ; CODE XREF from entry0 @ +0x36b(x)
+  ────────> 0x000244a7      005800         add byte [eax], bl
+  │││││││   0x000244aa      49             dec ecx
+  │││││││   0x000244ab      6f             outsd dx, dword [esi]
+  │││││││   0x000244ac      43             inc ebx
+  ────────< 0x000244ad      7265           jb 0x24514
+  │││││││   0x000244af      61             popal
+  ────────< 0x000244b0      7465           je 0x24517
+  │││││││   0x000244b2      55             push ebp
+  │││││││   0x000244b3      6e             outsb dx, byte [esi]
+  ────────< 0x000244b4      7072           jo 0x24528
+  ││ ││││   0x000244b6      6f             outsd dx, dword [esi]
+  ││ ││││   ; CODE XREF from entry0 @ +0x312(x)
+  ││┌└────> 0x000244b7      7465           je 0x2451e
+  │││ │││   0x000244b9      63746564       arpl word [ebp + 0x64], si
+  │││ │││   0x000244bd      53             push ebx
+  │││┌────< 0x000244be      796d           jns 0x2452d
+  │││││││   0x000244c0      626f6c         bound ebp, qword [edi + 0x6c]
+  │ │││││   0x000244c3      69634c696e..   imul esp, dword [ebx + 0x4c], 0x6b6e69
+  │ │││││   0x000244ca      53             push ebx
+  │ │││││   0x000244cb      00496f         add byte [ecx + 0x6f], cl
+  │ │││││   0x000244ce      43             inc ebx
+  │┌──────< 0x000244cf      7265           jb 0x24536
+  │││││││   0x000244d1      61             popal
+  ────────< 0x000244d2      7465           je 0x24539
+  │││││││   0x000244d4      44             inc esp
+  ────────< 0x000244d5      657669         jbe 0x24541
+  │││││││   0x000244d8      636500         arpl word [ebp], sp
+  │││││││   0x000244db      0039           add byte [ecx], bh
+  │││││││   0x000244dd      015274         add dword [edx + 0x74], edx
+  │││││││   0x000244e0      6c             insb byte es:[edi], dx
+  │││││││   0x000244e1      49             dec ecx
+  │││││││   ; CODE XREF from entry0 @ +0x330(x)
+  ────────> 0x000244e2      6e             outsb dx, byte [esi]
+  │││││││   0x000244e3      6974556e69..   imul esi, dword [ebp + edx*2 + 0x6e], 0x646f6369 ; [0x646f6369:4]=-1
+   ││││││   0x000244eb      6553           push ebx
+  ┌───────< 0x000244ed      7472           je 0x24561
+  │││││││   0x000244ef      696e670000..   imul ebp, dword [esi + 0x67], 0xd0000 ; [0xd0000:4]=-1
+  │││││││   0x000244f6      45             inc ebp
+  ────────< 0x000244f7      7841           js 0x2453a
+  │││││││   0x000244f9      6c             insb byte es:[edi], dx
+  │││││││   0x000244fa      6c             insb byte es:[edi], dx
+  │││││││   0x000244fb      6f             outsd dx, dword [esi]
+  │││││││   ; CODE XREF from entry0 @ +0x354(x)
+  ────────> 0x000244fc      636174         arpl word [ecx + 0x74], sp
+  │││││││   0x000244ff      6550           push eax
+  │││││││   0x00024501      6f             outsd dx, dword [esi]
+  │││││││   0x00024502      6f             outsd dx, dword [esi]
+  │││││││   0x00024503      6c             insb byte es:[edi], dx
+  │││││││   0x00024504      57             push edi
+  │││││││   0x00024505      6974685461..   imul esi, dword [eax + ebp*2 + 0x54], 0x98006761 ; [0x98006761:4]=-1
+  │││││││   ; CODE XREF from entry0 @ +0x368(x)
+  ────────> 0x0002450d      016d65         add dword [ebp + 0x65], ebp
+  │││││││   0x00024510      6d             insd dword es:[edi], dx
+  ────────< 0x00024511      7365           jae 0x24578
+  ────────< 0x00024513      7400           je 0x24515
+  │││││││   ; CODE XREF from entry0 @ +0x3d9(x)
+  ────────> 0x00024515      00ff           add bh, bh
+  │││││││   ; CODE XREF from entry0 @ +0x376(x)
+  ────────> 0x00024517      004f62         add byte [edi + 0x62], cl
+  │││││││   0x0002451a      6644           inc sp
+  ────────< 0x0002451c      657265         jb 0x24584
+  ││┌─────< 0x0002451f      66657265       jb 0x24588
+  │││││││   0x00024523      6e             outsb dx, byte [esi]
+  │││││││   0x00024524      63654f         arpl word [ebp + 0x4f], sp
+  │││││││   0x00024527      626a65         bound ebp, qword [edx + 0x65]
+  │││││││   0x0002452a      63740000       arpl word [eax + eax], si
+  │││ │││   0x0002452e      c400           les eax, [eax]
+  │││ │││   0x00024530      4b             dec ebx
+  │││ │││   0x00024531      6552           push edx
+  │││ │││   0x00024533      656c           insb byte es:[edi], dx
+  │││ │││   0x00024535      6561           popal
+  │ │┌────< 0x00024537      7365           jae 0x2459e
+  │ │││││   ; CODE XREF from entry0 @ +0x398(x)
+  ────────> 0x00024539      4d             dec ebp
+  │ │││││   ; CODE XREF from entry0 @ +0x3bd(x)
+  ─┌──────< 0x0002453a      7574           jne 0x245b0
+  ────────< 0x0002453c      657800         js 0x2453f
+  │││││││   ; CODE XREF from entry0 @ +0x402(x)
+  ────────> 0x0002453f      000d01507354   add byte [0x54735001], cl   ; [0x54735001:1]=255
+  ────────< 0x00024545      65726d         jb 0x245b5
+  │││││││   0x00024548      696e617465..   imul ebp, dword [esi + 0x61], 0x79536574 ; [0x79536574:4]=-1
+  ────────< 0x0002454f      7374           jae 0x245c5
+  │││││││   0x00024551      656d           insd dword es:[edi], dx
+  │││││││   0x00024553      54             push esp
+  │││││││   0x00024554      6872656164     push 0x64616572             ; 'read'
+  │││││││   0x00024559      00a9004b6544   add byte [ecx + 0x44654b00], ch ; [0x44654b00:1]=255
+  │││││││   0x0002455f      656c           insb byte es:[edi], dx
+  │││││││   ; CODE XREF from entry0 @ +0x3b3(x)
+  └───────> 0x00024561      61             popal
+  ┌───────< 0x00024562      7945           jns 0x245a9
+  ────────< 0x00024564      7865           js 0x245cb
+  │││││││   0x00024566      637574         arpl word [ebp + 0x74], si
+  │││││││   0x00024569      696f6e5468..   imul ebp, dword [edi + 0x6e], 0x65726854 ; [0x65726854:4]=-1
+  │││││││   0x00024570      61             popal
+  │││││││   0x00024571      640000         add byte fs:[eax], al
+  │││││││   0x00024574      d000           rol byte [eax], 1
+  │││││││   0x00024576      4b             dec ebx
+  │││││││   0x00024577      6553           push ebx
+  ────────< 0x00024579      657450         je 0x245cc
+  ────────< 0x0002457c      7269           jb 0x245e7
+  │││││││   0x0002457e      6f             outsd dx, dword [esi]
+  ────────< 0x0002457f      7269           jb 0x245ea
+  ────────< 0x00024581      7479           je 0x245fc
+  │││││││   0x00024583      54             push esp
+  │││││││   ; CODE XREF from entry0 @ +0x3e2(x)
+  ────────> 0x00024584      6872656164     push 0x64616572             ; 'read'
+  ││ ││││   0x00024589      00ac004b65..   add byte [eax + eax + 0x6547654b], ch ; [0x6547654b:1]=255
+  ││┌─────< 0x00024590      7443           je 0x245d5
+  ────────< 0x00024592      7572           jne 0x24606
+  ────────< 0x00024594      7265           jb 0x245fb
+  │││││││   0x00024596      6e             outsb dx, byte [esi]
+  ────────< 0x00024597      7454           je 0x245ed
+  │││││││   0x00024599      6872656164     push 0x64616572             ; 'read'
+  │││││││   ; CODE XREF from entry0 @ +0x3fd(x)
+  │││└────> 0x0002459e      0000           add byte [eax], al
+  │││ │││   0x000245a0      b8004b6549     mov eax, 0x49654b00
+  │││ │││   0x000245a5      6e             outsb dx, byte [esi]
+  │││┌────< 0x000245a6      7365           jae 0x2460d
+  ────────< 0x000245a8      7274           jb 0x2461e
+   ││││││   0x000245aa      51             push ecx
+  ┌───────< 0x000245ab      7565           jne 0x24612
+  ────────< 0x000245ad      7565           jne 0x24614
+  │││││││   0x000245af      44             inc esp
+  │││││││   ; CODE XREF from entry0 @ +0x400(x)
+  ─└──────> 0x000245b0      7063           jo 0x24615
+  │ │││││   0x000245b2      0000           add byte [eax], al
+  │ │││││   0x000245b4      d800           fadd dword [eax]
+  │ │││││   0x000245b6      4b             dec ebx
+  │ │││││   0x000245b7      656652         push dx
+  │ │││││   0x000245ba      656c           insb byte es:[edi], dx
+  │ │││││   0x000245bc      6561           popal
+  │┌──────< 0x000245be      7365           jae 0x24625
+  │││││││   0x000245c0      53             push ebx
+  ────────< 0x000245c1      7069           jo 0x2462c
+  │││││││   0x000245c3      6e             outsb dx, byte [esi]
+  │││││││   0x000245c4      4c             dec esp
+  │││││││   ; CODE XREF from entry0 @ +0x415(x)
+  ────────> 0x000245c5      6f             outsd dx, dword [esi]
+  │││││││   0x000245c6      636b46         arpl word [ebx + 0x46], bp
+  ────────< 0x000245c9      726f           jb 0x2463a
+  │││││││   ; CODE XREF from entry0 @ +0x42a(x)
+  ────────> 0x000245cb      6d             insd dword es:[edi], dx
+  │││││││   ; CODE XREF from entry0 @ +0x43f(x)
+  ────────> 0x000245cc      44             inc esp
+  ────────< 0x000245cd      7063           jo 0x24632
+  │││││││   0x000245cf      4c             dec esp
+  ────────< 0x000245d0      657665         jbe 0x24638
+  │││││││   0x000245d3      6c             insb byte es:[edi], dx
+  │││││││   0x000245d4      0000           add byte [eax], al
+  ││ ││││   0x000245d6      d7             xlatb
+  ││ ││││   0x000245d7      004b65         add byte [ebx + 0x65], cl
+  ││ ││││   0x000245da      6641           inc cx
+  ││ ││││   0x000245dc      637175         arpl word [ecx + 0x75], si
+  ││ ││││   0x000245df      6972655370..   imul esi, dword [edx + 0x65], 0x6e697053 ; [0x6e697053:4]=-1
+  ││ ││││   0x000245e6      4c             dec esp
+  ││ ││││   ; CODE XREF from entry0 @ +0x442(x)
+  ────────> 0x000245e7      6f             outsd dx, dword [esi]
+  ││ ││││   0x000245e8      636b41         arpl word [ebx + 0x41], bp
+  ││┌─────< 0x000245eb      7444           je 0x24631
+  │││││││   ; CODE XREF from entry0 @ +0x45d(x)
+  ────────< 0x000245ed      7063           jo 0x24652
+  │││││││   0x000245ef      4c             dec esp
+  ────────< 0x000245f0      657665         jbe 0x24658
+  │││││││   0x000245f3      6c             insb byte es:[edi], dx
+  │││││││   0x000245f4      0000           add byte [eax], al
+  │││││││   0x000245f6      61             popal
+  │││││││   0x000245f7      015a77         add dword [edx + 0x77], ebx
+  │││││││   0x000245fa      43             inc ebx
+  │││││││   ; CODE XREF from entry0 @ +0x45a(x)
+  ────────> 0x000245fb      6c             insb byte es:[edi], dx
+  │││││││   ; CODE XREF from entry0 @ +0x447(x)
+  ────────> 0x000245fc      6f             outsd dx, dword [esi]
+  ────────< 0x000245fd      7365           jae 0x24664
+  │││││││   0x000245ff      00fb           add bl, bh
+  │││││││   0x00024601      004f62         add byte [edi + 0x62], cl
+  │││││││   0x00024604      52             push edx
+  ────────< 0x00024605      6566657265     jb 0x2466f
+  │││││││   0x0002460a      6e             outsb dx, byte [esi]
+  │││││││   0x0002460b      63654f         arpl word [ebp + 0x4f], sp
+  │││ │││   0x0002460e      626a65         bound ebp, qword [edx + 0x65]
+  │││ │││   0x00024611      63744279       arpl word [edx + eax*2 + 0x79], si
+   ││ │││   ; CODE XREF from entry0 @ +0x476(x)
+  ────────> 0x00024615      48             dec eax
+   ││ │││   0x00024616      61             popal
+   ││ │││   0x00024617      6e             outsb dx, byte [esi]
+   ││ │││   0x00024618      646c           insb byte es:[edi], dx
+   ││ │││   0x0002461a      65000c01       add byte gs:[ecx + eax], cl
+   ││ │││   ; CODE XREF from entry0 @ +0x46e(x)
+  ────────> 0x0002461e      50             push eax
+   ││┌────< 0x0002461f      7343           jae 0x24664
+  ┌───────< 0x00024621      7265           jb 0x24688
+  │││││││   0x00024623      61             popal
+  ────────< 0x00024624      7465           je 0x2468b
+  │ │││││   0x00024626      53             push ebx
+  │┌──────< 0x00024627      7973           jns 0x2469c
+  ────────< 0x00024629      7465           je 0x24690
+  │││││││   0x0002462b      6d             insd dword es:[edi], dx
+  │││││││   ; CODE XREF from entry0 @ +0x487(x)
+  ────────> 0x0002462c      54             push esp
+  │││││││   0x0002462d      6872656164     push 0x64616572             ; 'read'
+  ││ ││││   ; CODE XREF from entry0 @ +0x493(x)
+  ────────> 0x00024632      0000           add byte [eax], al
+  ││ ││││   0x00024634      b100           mov cl, 0
+  ││ ││││   0x00024636      4b             dec ebx
+  ││ ││││   0x00024637      6549           dec ecx
+  ││ ││││   0x00024639      6e             outsb dx, byte [esi]
+  ││ ││││   ; CODE XREF from entry0 @ +0x48f(x)
+  ────────> 0x0002463a      697469616c..   imul esi, dword [ecx + ebp*2 + 0x61], 0x657a696c ; [0x657a696c:4]=-1
+  ││ ││││   0x00024642      4d             dec ebp
+  ││┌─────< 0x00024643      7574           jne 0x246b9
+  ────────< 0x00024645      657800         js 0x24648
+  │││││││   ; CODE XREF from entry0 @ +0x50b(x)
+  ────────> 0x00024648      b300           mov bl, 0
+  │││││││   0x0002464a      4b             dec ebx
+  │││││││   0x0002464b      6549           dec ecx
+  │││││││   0x0002464d      6e             outsb dx, byte [esi]
+  │││││││   0x0002464e      697469616c..   imul esi, dword [ecx + ebp*2 + 0x61], 0x657a696c ; [0x657a696c:4]=-1
+  │││││││   0x00024656      53             push ebx
+  ────────< 0x00024657      7069           jo 0x246c2
+  │││││││   0x00024659      6e             outsb dx, byte [esi]
+  │││││││   0x0002465a      4c             dec esp
+  │││││││   0x0002465b      6f             outsd dx, dword [esi]
+  │││││││   0x0002465c      636b00         arpl word [ebx], bp
+  │││││││   0x0002465f      00af004b6549   add byte [edi + 0x49654b00], ch ; [0x49654b00:1]=255
+  │││ │││   0x00024665      6e             outsb dx, byte [esi]
+  │││ │││   0x00024666      697469616c..   imul esi, dword [ecx + ebp*2 + 0x61], 0x657a696c ; [0x657a696c:4]=-1
+  │││ │││   0x0002466e      44             inc esp
+  │││ │││   ; CODE XREF from entry0 @ +0x4cb(x)
+  ───┌────< 0x0002466f      7063           jo 0x246d4
+  │││││││   0x00024671      0009           add byte [ecx], cl
+  │││││││   0x00024673      004b66         add byte [ebx + 0x66], cl
+  │││││││   0x00024676      52             push edx
+  │││││││   0x00024677      656c           insb byte es:[edi], dx
+  │││││││   0x00024679      6561           popal
+  ────────< 0x0002467b      7365           jae 0x246e2
+  │││││││   0x0002467d      53             push ebx
+  ────────< 0x0002467e      7069           jo 0x246e9
+  │││││││   0x00024680      6e             outsb dx, byte [esi]
+  │││││││   0x00024681      4c             dec esp
+  │││││││   0x00024682      6f             outsd dx, dword [esi]
+  │││││││   0x00024683      636b00         arpl word [ebx], bp
+  │││││││   0x00024686      06             push es
+  │││││││   0x00024687      004b66         add byte [ebx + 0x66], cl
+   ││││││   0x0002468a      41             inc ecx
+   ││││││   ; CODE XREF from entry0 @ +0x4ea(x)
+  ────────> 0x0002468b      637175         arpl word [ecx + 0x75], si
+   ││││││   0x0002468e      6972655370..   imul esi, dword [edx + 0x65], 0x6e697053 ; [0x6e697053:4]=-1
+   ││││││   0x00024695      4c             dec esp
+   ││││││   0x00024696      6f             outsd dx, dword [esi]
+   ││││││   0x00024697      636b00         arpl word [ebx], bp
+  ┌───────< 0x0002469a      7601           jbe 0x2469d
+  │││││││   ; CODE XREF from entry0 @ +0x4ed(x)
+  │└──────> 0x0002469c      5a             pop edx
+  │ │││││   ; CODE XREF from entry0 @ +0x560(x)
+  └┌──────< 0x0002469d      7753           ja 0x246f2
+  ┌───────< 0x0002469f      657456         je 0x246f8
+  │││││││   0x000246a2      61             popal
+  │││││││   0x000246a3      6c             insb byte es:[edi], dx
+  ────────< 0x000246a4      7565           jne 0x2470b
+  │││││││   0x000246a6      4b             dec ebx
+  ────────< 0x000246a7      657900         jns 0x246aa
+  │││││││   ; CODE XREF from entry0 @ +0x56d(x)
+  ────────> 0x000246aa      7800           js 0x246ac
+  │││││││   ; CODE XREF from entry0 @ +0x570(x)
+  ────────> 0x000246ac      49             dec ecx
+  │││││││   0x000246ad      6f             outsd dx, dword [esi]
+  │││││││   0x000246ae      4f             dec edi
+  ────────< 0x000246af      7065           jo 0x24716
+  │││││││   0x000246b1      6e             outsb dx, byte [esi]
+  │││││││   0x000246b2      44             inc esp
+  ────────< 0x000246b3      657669         jbe 0x2471f
+  │││││││   0x000246b6      636549         arpl word [ebp + 0x49], sp
+  │││││││   ; CODE XREF from entry0 @ +0x509(x)
+  ││└─────> 0x000246b9      6e             outsb dx, byte [esi]
+  ││┌─────< 0x000246ba      7465           je 0x24721
+  ────────< 0x000246bc      7266           jb 0x24724
+  │││││││   0x000246be      61             popal
+  │││││││   0x000246bf      636552         arpl word [ebp + 0x52], sp
+  │││││││   ; CODE XREF from entry0 @ +0x51d(x)
+  ────────> 0x000246c2      6567697374..   imul esi, dword gs:[bp + di + 0x74], 0x654b7972 ; [0x654b7972:4]=-1
+  ────────< 0x000246cb      7900           jns 0x246cd
+  │││││││   ; CODE XREF from entry0 @ +0x591(x)
+  ────────> 0x000246cd      008600496f53   add byte [esi + 0x536f4900], al ; [0x536f4900:1]=255
+  ────────< 0x000246d3      657444         je 0x2471a
+  │││┌────< 0x000246d6      657669         jbe 0x24742
+  │││││││   0x000246d9      636549         arpl word [ebp + 0x49], sp
+  │││││││   0x000246dc      6e             outsb dx, byte [esi]
+  ────────< 0x000246dd      7465           je 0x24744
+  ────────< 0x000246df      7266           jb 0x24747
+  │││││││   0x000246e1      61             popal
+  │││││││   ; CODE XREF from entry0 @ +0x541(x)
+  ────────> 0x000246e2      636553         arpl word [ebp + 0x53], sp
+  ────────< 0x000246e5      7461           je 0x24748
+  ────────< 0x000246e7      7465           je 0x2474e
+  │││││││   ; CODE XREF from entry0 @ +0x544(x)
+  ────────> 0x000246e9      007b00         add byte [ebx], bh
+  │││││││   0x000246ec      49             dec ecx
+  │││││││   0x000246ed      6f             outsd dx, dword [esi]
+  │││││││   0x000246ee      52             push edx
+  │││││││   0x000246ef      6567697374..   imul esi, dword gs:[bp + di + 0x74], 0x65447265 ; [0x65447265:4]=-1
+  │ │││││   ; CODE XREF from entry0 @ +0x565(x)
+  └┌──────< 0x000246f8      7669           jbe 0x24763
+   ││││││   0x000246fa      636549         arpl word [ebp + 0x49], sp
+   ││││││   0x000246fd      6e             outsb dx, byte [esi]
+  ┌───────< 0x000246fe      7465           je 0x24765
+  ────────< 0x00024700      7266           jb 0x24768
+  │││││││   0x00024702      61             popal
+  │││││││   0x00024703      636500         arpl word [ebp], sp
+  │││││││   0x00024706      c500           lds eax, [eax]
+  │││││││   0x00024708      4b             dec ebx
+  │││││││   0x00024709      6552           push edx
+  │││││││   ; CODE XREF from entry0 @ +0x56a(x)
+  ────────> 0x0002470b      656c           insb byte es:[edi], dx
+  │││││││   0x0002470d      6561           popal
+  ────────< 0x0002470f      7365           jae 0x24776
+  │││││││   0x00024711      53             push ebx
+  │││││││   0x00024712      656d           insd dword es:[edi], dx
+  │││││││   0x00024714      61             popal
+  ────────< 0x00024715      7068           jo 0x2477f
+  │││││││   0x00024717      6f             outsd dx, dword [esi]
+  ────────< 0x00024718      7265           jb 0x2477f
+  │││││││   ; CODE XREF from entry0 @ +0x599(x)
+  ────────> 0x0002471a      0000           add byte [eax], al
+  │││││││   0x0002471c      b200           mov dl, 0
+  │││││││   0x0002471e      4b             dec ebx
+  │││││││   ; CODE XREF from entry0 @ +0x579(x)
+  ────────> 0x0002471f      6549           dec ecx
+  │││││││   ; CODE XREF from entry0 @ +0x580(x)
+  ││└─────> 0x00024721      6e             outsb dx, byte [esi]
+  ││ ││││   0x00024722      697469616c..   imul esi, dword [ecx + ebp*2 + 0x61], 0x657a696c ; [0x657a696c:4]=-1
+  ││ ││││   0x0002472a      53             push ebx
+  ││ ││││   0x0002472b      656d           insd dword es:[edi], dx
+  ││ ││││   0x0002472d      61             popal
+  ││┌─────< 0x0002472e      7068           jo 0x24798
+  │││││││   0x00024730      6f             outsd dx, dword [esi]
+  ────────< 0x00024731      7265           jb 0x24798
+  │││││││   0x00024733      001500575249   add byte [0x49525700], dl   ; [0x49525700:1]=255
+  │││││││   0x00024739      54             push esp
+  │││││││   0x0002473a      45             inc ebp
+  │││││││   0x0002473b      5f             pop edi
+  │││││││   0x0002473c      50             push eax
+  │││││││   0x0002473d      4f             dec edi
+  │││││││   0x0002473e      52             push edx
+  │││││││   0x0002473f      54             push esp
+  │││││││   0x00024740      5f             pop edi
+  │││││││   0x00024741      55             push ebp
+  │││││││   ; CODE XREF from entry0 @ +0x59c(x)
+  │││└────> 0x00024742      53             push ebx
+  │││ │││   0x00024743      48             dec eax
+  │││ │││   ; CODE XREF from entry0 @ +0x5a3(x)
+  ────────> 0x00024744      4f             dec edi
+  │││ │││   0x00024745      52             push edx
+  │││ │││   0x00024746      54             push esp
+  │││ │││   ; CODE XREF from entry0 @ +0x5a5(x)
+  ────────> 0x00024747      000d00524541   add byte [0x41455200], cl   ; [0x41455200:1]=255
+  │││ │││   0x0002474d      44             inc esp
+  │││ │││   ; CODE XREF from entry0 @ +0x5ad(x)
+  ────────> 0x0002474e      5f             pop edi
+  │││ │││   0x0002474f      50             push eax
+  │││ │││   0x00024750      4f             dec edi
+  │││ │││   0x00024751      52             push edx
+  │││ │││   0x00024752      54             push esp
+  │││ │││   0x00024753      5f             pop edi
+  │││ │││   0x00024754      55             push ebp
+  │││ │││   0x00024755      43             inc ebx
+  │││ │││   0x00024756      48             dec eax
+  │││ │││   0x00024757      41             inc ecx
+  │││ │││   0x00024758      52             push edx
+  │││ │││   0x00024759      0013           add byte [ebx], dl
+  │││ │││   0x0002475b      005752         add byte [edi + 0x52], dl
+  │││ │││   0x0002475e      49             dec ecx
+  │││ │││   0x0002475f      54             push esp
+  │││ │││   0x00024760      45             inc ebp
+  │││ │││   0x00024761      5f             pop edi
+  │││ │││   0x00024762      50             push eax
+  │││ │││   ; CODE XREF from entry0 @ +0x5be(x)
+  │└──────> 0x00024763      4f             dec edi
+  │ │ │││   0x00024764      52             push edx
+  │ │ │││   ; CODE XREF from entry0 @ +0x5c4(x)
+  └───────> 0x00024765      54             push esp
+    │ │││   0x00024766      5f             pop edi
+    │ │││   0x00024767      55             push ebp
+    │ │││   ; CODE XREF from entry0 @ +0x5c6(x)
+  ────────> 0x00024768      43             inc ebx
+    │ │││   0x00024769      48             dec eax
+    │ │││   0x0002476a      41             inc ecx
+    │ │││   0x0002476b      52             push edx
+    │ │││   0x0002476c      0000           add byte [eax], al
+    │ │││   0x0002476e      0f005245       lldt word [edx + 0x45]
+    │ │││   0x00024772      41             inc ecx
+    │ │││   0x00024773      44             inc esp
+    │ │││   0x00024774      5f             pop edi
+    │ │││   0x00024775      50             push eax
+    │ │││   ; CODE XREF from entry0 @ +0x5d5(x)
+  ────────> 0x00024776      4f             dec edi
+    │ │││   0x00024777      52             push edx
+    │ │││   0x00024778      54             push esp
+    │ │││   0x00024779      5f             pop edi
+    │ │││   0x0002477a      55             push ebp
+    │ │││   0x0002477b      53             push ebx
+    │ │││   0x0002477c      48             dec eax
+    │ │││   0x0002477d      4f             dec edi
+    │ │││   0x0002477e      52             push edx
+    │ │││   ; CODE XREFS from entry0 @ +0x5db(x), +0x5de(x)
+  ────────> 0x0002477f      54             push esp
+    │ │││   0x00024780      0000           add byte [eax], al
+    │ │││   0x00024782      05004b6553     add eax, 0x53654b00
+    │┌────< 0x00024787      7461           je 0x247ea
+    │││││   0x00024789      6c             insb byte es:[edi], dx
+    │││││   0x0002478a      6c             insb byte es:[edi], dx
+    │││││   0x0002478b      45             inc ebp
+   ┌──────< 0x0002478c      7865           js 0x247f3
+   ││││││   0x0002478e      637574         arpl word [ebp + 0x74], si
+   ││││││   0x00024791      696f6e5072..   imul ebp, dword [edi + 0x6e], 0x636f7250 ; [0x636f7250:4]=-1
+   ││││││   ; CODE XREFS from entry0 @ +0x5f4(x), +0x5f7(x)
+  ┌─└─────> 0x00024798      657373         jae 0x2480e
+  ││ ││││   0x0002479b      6f             outsd dx, dword [esi]
+  ││┌─────< 0x0002479c      7200           jb 0x2479e
+  │││││││   ; CODE XREF from entry0 @ +0x662(x)
+  ││└─────> 0x0002479e      a7             cmpsd dword [esi], dword es:[edi]
+  ││ ││││   0x0002479f      004b65         add byte [ebx + 0x65], cl
+  ││ ││││   0x000247a2      43             inc ebx
+  ││ ││││   0x000247a3      61             popal
+  ││ ││││   0x000247a4      6e             outsb dx, byte [esi]
+  ││ ││││   0x000247a5      63656c         arpl word [ebp + 0x6c], sp
+  ││ ││││   0x000247a8      54             push esp
+  ││ ││││   0x000247a9      696d657200..   imul ebp, dword [ebp + 0x65], 0xd10072 ; [0xd10072:4]=-1
+  ││ ││││   0x000247b0      4b             dec ebx
+  ││ ││││   0x000247b1      6553           push ebx
+  ││┌─────< 0x000247b3      657454         je 0x2480a
+  │││││││   0x000247b6      696d657200..   imul ebp, dword [ebp + 0x65], 0xb4000072 ; [0xb4000072:4]=-1
+  │││││││   0x000247bd      004b65         add byte [ebx + 0x65], cl
+  │││││││   0x000247c0      49             dec ecx
+  │││││││   0x000247c1      6e             outsb dx, byte [esi]
+  │││││││   0x000247c2      697469616c..   imul esi, dword [ecx + ebp*2 + 0x61], 0x657a696c ; [0x657a696c:4]=-1
+  │││││││   0x000247ca      54             push esp
+  │││││││   0x000247cb      696d657200..   imul ebp, dword [ebp + 0x65], 0x1960072 ; [0x1960072:4]=-1
+  │││││││   0x000247d2      6d             insd dword es:[edi], dx
+  │││││││   0x000247d3      656d           insd dword es:[edi], dx
+  │││││││   0x000247d5      637079         arpl word [eax + 0x79], si
+  │││││││   0x000247d8      0000           add byte [eax], al
+  │││││││   0x000247da      6c             insb byte es:[edi], dx
+  │││││││   0x000247db      015a77         add dword [edx + 0x77], ebx
+  │││││││   0x000247de      4f             dec edi
+  ────────< 0x000247df      7065           jo 0x24846
+  │││││││   0x000247e1      6e             outsb dx, byte [esi]
+  │││││││   0x000247e2      4b             dec ebx
+  ────────< 0x000247e3      657900         jns 0x247e6
+  │││││││   ; CODE XREF from entry0 @ +0x6a9(x)
+  ────────> 0x000247e6      0400           add al, 0
+  │││││││   0x000247e8      4b             dec ebx
+  │││││││   0x000247e9      6551           push ecx
+  │││┌────< 0x000247eb      7565           jne 0x24852
+  ────────< 0x000247ed      7279           jb 0x24868
+  │││││││   0x000247ef      50             push eax
+  ────────< 0x000247f0      657266         jb 0x24859
+  │││││││   ; CODE XREF from entry0 @ +0x652(x)
+  │└──────> 0x000247f3      6f             outsd dx, dword [esi]
+  │┌──────< 0x000247f4      726d           jb 0x24863
+  │││││││   0x000247f6      61             popal
+  │││││││   0x000247f7      6e             outsb dx, byte [esi]
+  │││││││   0x000247f8      636543         arpl word [ebp + 0x43], sp
+  │││││││   0x000247fb      6f             outsd dx, dword [esi]
+  ────────< 0x000247fc      756e           jne 0x2486c
+  ────────< 0x000247fe      7465           je 0x24865
+  ────────< 0x00024800      7200           jb 0x24802
+  │││││││   ; CODE XREF from entry0 @ +0x6c6(x)
+  ────────> 0x00024802      8501           test dword [ecx], eax
+  │││││││   0x00024804      5f             pop edi
+  ────────< 0x00024805      7763           ja 0x2486a
+  ────────< 0x00024807      7369           jae 0x24872
+  │││││││   0x00024809      636d70         arpl word [ebp + 0x70], bp
+  ││ ││││   0x0002480c      0000           add byte [eax], al
+  ││ ││││   ; CODE XREF from entry0 @ +0x65e(x)
+  └───────> 0x0002480e      4e             dec esi
+   │ ││││   0x0002480f      54             push esp
+   │ ││││   0x00024810      4f             dec edi
+   │ ││││   0x00024811      53             push ebx
+   │ ││││   0x00024812      4b             dec ebx
+   │ ││││   0x00024813      52             push edx
+   │ ││││   0x00024814      4e             dec esi
+   │ ││││   0x00024815      4c             dec esp
+   │ ││││   0x00024816      2e45           inc ebp
+   │ ││││   0x00024818      58             pop eax
+   │ ││││   0x00024819      45             inc ebp
+   │ ││││   0x0002481a      0000           add byte [eax], al
+   │ ││││   0x0002481c      48             dec eax
+   │ ││││   0x0002481d      41             inc ecx
+   │ ││││   0x0002481e      4c             dec esp
+   │ ││││   0x0002481f      2e44           inc esp
+   │ ││││   0x00024821      4c             dec esp
+   │ ││││   0x00024822      4c             dec esp
+   │ ││││   0x00024823      0091055f7673   add byte [ecx + 0x73765f05], dl ; [0x73765f05:1]=255
+   │ ││││   0x00024829      6e             outsb dx, byte [esi]
+   │┌─────< 0x0002482a      7770           ja 0x2489c
+  ┌───────< 0x0002482c      7269           jb 0x24897
+  │││││││   0x0002482e      6e             outsb dx, byte [esi]
+  ────────< 0x0002482f      7466           je 0x24897
+  │││││││   0x00024831      009c024d6d..   add byte [edx + eax + 0x65476d4d], bl ; [0x65476d4d:1]=255
+  ────────< 0x00024838      7450           je 0x2488a
+  │││││││   0x0002483a      6879736963     push 0x63697379             ; 'ysic'
+  │││││││   0x0002483f      61             popal
+  │││││││   0x00024840      6c             insb byte es:[edi], dx
+  │││││││   0x00024841      41             inc ecx
+  ────────< 0x00024842      64647265       jb 0x248ab
+  │││││││   ; CODE XREF from entry0 @ +0x6a5(x)
+  ────────> 0x00024846      7373           jae 0x248bb
+  │││││││   0x00024848      0000           add byte [eax], al
+  │││││││   0x0002484a      8a02           mov al, byte [edx]
+  │││││││   0x0002484c      4d             dec ebp
+  │││││││   0x0002484d      6d             insd dword es:[edi], dx
+  │││││││   0x0002484e      41             inc ecx
+  │││││││   0x0002484f      6c             insb byte es:[edi], dx
+  │││││││   0x00024850      6c             insb byte es:[edi], dx
+  │││││││   0x00024851      6f             outsd dx, dword [esi]
+  │││││││   ; CODE XREF from entry0 @ +0x6b1(x)
+  │││└────> 0x00024852      636174         arpl word [ecx + 0x74], sp
+  │││ │││   0x00024855      6543           inc ebx
+  │││ │││   0x00024857      6f             outsd dx, dword [esi]
+  │││ │││   0x00024858      6e             outsb dx, byte [esi]
+  │││ │││   ; CODE XREF from entry0 @ +0x6b6(x)
+  ───┌────< 0x00024859      7469           je 0x248c4
+  ────────< 0x0002485b      67756f         jne 0x248cd
+  ────────< 0x0002485e      7573           jne 0x248d3
+  │││││││   0x00024860      4d             dec ebp
+  │││││││   0x00024861      656d           insd dword es:[edi], dx
+  │││││││   ; CODE XREF from entry0 @ +0x6ba(x)
+  │└──────> 0x00024863      6f             outsd dx, dword [esi]
+  │┌──────< 0x00024864      7279           jb 0x248df
+  │││││││   0x00024866      0000           add byte [eax], al
+  │││││││   ; CODE XREF from entry0 @ +0x6b3(x)
+  ────────> 0x00024868      97             xchg edi, eax
+  │││││││   0x00024869      024d6d         add cl, byte [ebp + 0x6d]
+  │││││││   ; CODE XREF from entry0 @ +0x6c2(x)
+  ────────> 0x0002486c      46             inc esi
+  ────────< 0x0002486d      7265           jb 0x248d4
+  │││││││   0x0002486f      6543           inc ebx
+  │││││││   0x00024871      6f             outsd dx, dword [esi]
+  │││││││   ; CODE XREF from entry0 @ +0x6cd(x)
+  ────────> 0x00024872      6e             outsb dx, byte [esi]
+  ────────< 0x00024873      7469           je 0x248de
+  ────────< 0x00024875      67756f         jne 0x248e7
+  ────────< 0x00024878      7573           jne 0x248ed
+  │││││││   0x0002487a      4d             dec ebp
+  │││││││   0x0002487b      656d           insd dword es:[edi], dx
+  │││││││   0x0002487d      6f             outsd dx, dword [esi]
+  ────────< 0x0002487e      7279           jb 0x248f9
+  │││││││   0x00024880      0000           add byte [eax], al
+  │││││││   0x00024882      6e             outsb dx, byte [esi]
+  ────────< 0x00024883      746f           je 0x248f4
+  ────────< 0x00024885      736b           jae 0x248f2
+  ────────< 0x00024887      726e           jb 0x248f7
+  │││││││   0x00024889      6c             insb byte es:[edi], dx
+  │││││││   ; CODE XREF from entry0 @ +0x6fe(x)
+  ────────> 0x0002488a      2e657865       js 0x248f3
+  │││││││   0x0002488e      0000           add byte [eax], al
+  │││││││   0x00024890      3200           xor al, byte [eax]
+  │││││││   0x00024892      50             push eax
+  │││││││   0x00024893      635265         arpl word [edx + 0x65], dx
+  │││││││   0x00024896      6769737465..   imul esi, dword [bp + di + 0x74], 0x75537265 ; [0x75537265:4]=-1
+   │ ││││   0x0002489e      62646576       bound esp, qword [ebp + 0x76]
+   │ ││││   0x000248a2      6963650026..   imul esp, dword [ebx + 0x65], 0x50002600
+   │ ││││   0x000248a9      634e65         arpl word [esi + 0x65], cx
+   │┌─────< 0x000248ac      774d           ja 0x248fb
+   ││││││   0x000248ae      696e69706f..   imul ebp, dword [esi + 0x69], 0x74726f70 ; [0x74726f70:4]=-1
+   ││││││   0x000248b5      0027           add byte [edi], ah
+   ││││││   0x000248b7      005063         add byte [eax + 0x63], dl
+   ││││││   0x000248ba      4e             dec esi
+   ││││││   ; CODE XREF from entry0 @ +0x70c(x)
+  ┌───────< 0x000248bb      657750         ja 0x2490e
+  │││││││   0x000248be      6f             outsd dx, dword [esi]
+  ────────< 0x000248bf      7274           jb 0x24935
+  │││││││   0x000248c1      002a           add byte [edx], ch
+  │││││││   0x000248c3      005063         add byte [eax + 0x63], dl
+  │││ │││   0x000248c6      4e             dec esi
+  │││┌────< 0x000248c7      657752         ja 0x2491c
+  ────────< 0x000248ca      65736f         jae 0x2493c
+  │││││││   ; CODE XREF from entry0 @ +0x721(x)
+  ────────> 0x000248cd      7572           jne 0x24941
+  │││││││   0x000248cf      636553         arpl word [ebp + 0x53], sp
+  ────────< 0x000248d2      7562           jne 0x24936
+  │││││││   ; CODE XREF from entry0 @ +0x733(x)
+  ────────> 0x000248d4      6c             insb byte es:[edi], dx
+  │││││││   0x000248d5      6973740000..   imul esi, dword [ebx + 0x74], 0x120000 ; [0x120000:4]=0
+  │││││││   0x000248dc      50             push eax
+  │││││││   0x000248dd      63446973       arpl word [ecx + ebp*2 + 0x73], ax
+  │┌──────< 0x000248e1      7061           jo 0x24944
+  ────────< 0x000248e3      7463           je 0x24948
+  │││││││   0x000248e5      6849727000     push 0x707249               ; 'Irp'
+  │││││││   0x000248ea      2f             das
+  │││││││   0x000248eb      005063         add byte [eax + 0x63], dl
+  │││││││   0x000248ee      52             push edx
+  │││││││   0x000248ef      6567697374..   imul esi, dword gs:[bp + di + 0x74], 0x68507265 ; [0x68507265:4]=-1
+  ────────< 0x000248f8      7973           jns 0x2496d
+  │││││││   0x000248fa      6963616c43..   imul esp, dword [ebx + 0x61], 0x6e6f436c
+  ││ ││││   0x00024901      6e             outsb dx, byte [esi]
+  ││ ││││   0x00024902      656374696f     arpl word gs:[ecx + ebp*2 + 0x6f], si
+  ││ ││││   0x00024907      6e             outsb dx, byte [esi]
+  ││ ││││   0x00024908      0000           add byte [eax], al
+  ││ ││││   0x0002490a      2d00506352     sub eax, 0x52635000
+   │ ││││   0x0002490f      6567697374..   imul esi, dword gs:[bp + di + 0x74], 0x64417265 ; [0x64417265:4]=-1
+   │ ││││   0x00024918      61             popal
+   │┌─────< 0x00024919      7074           jo 0x2498f
+  ┌───────< 0x0002491b      657250         jb 0x2496e
+  │││ │││   0x0002491e      6f             outsd dx, dword [esi]
+  │││┌────< 0x0002491f      7765           ja 0x24986
+  ────────< 0x00024921      724d           jb 0x24970
+  │││││││   0x00024923      61             popal
+  │││││││   0x00024924      6e             outsb dx, byte [esi]
+  │││││││   0x00024925      61             popal
+  │││││││   0x00024926      67656d         insd dword es:[di], dx
+  │││││││   0x00024929      656e           outsb dx, byte gs:[esi]
+  ────────< 0x0002492b      7400           je 0x2492d
+  │││││││   ; CODE XREF from entry0 @ +0x7f1(x)
+  ────────> 0x0002492d      0006           add byte [esi], al
+  │││││││   0x0002492f      005063         add byte [eax + 0x63], dl
+  │││││││   0x00024932      41             inc ecx
+  │││││││   0x00024933      646441         inc ecx
+  │││││││   ; CODE XREF from entry0 @ +0x798(x)
+  ────────> 0x00024936      6461           popal
+  ────────< 0x00024938      7074           jo 0x249ae
+  ────────< 0x0002493a      657244         jb 0x24981
+  ────────< 0x0002493d      657669         jbe 0x249a9
+  │││││││   0x00024940      636500         arpl word [ebp], sp
+  │││││││   0x00024943      0023           add byte [ebx], ah
+  │ │││││   0x00024945      005063         add byte [eax + 0x63], dl
+  │ │││││   ; CODE XREF from entry0 @ +0x7a9(x)
+  ────────> 0x00024948      49             dec ecx
+  │ │││││   0x00024949      6e             outsb dx, byte [esi]
+  │ │││││   0x0002494a      697469616c..   imul esi, dword [ecx + ebp*2 + 0x61], 0x657a696c ; [0x657a696c:4]=-1
+  │ │││││   0x00024952      41             inc ecx
+  │ │││││   0x00024953      6461           popal
+  │┌──────< 0x00024955      7074           jo 0x249cb
+  ────────< 0x00024957      657244         jb 0x2499e
+  ────────< 0x0002495a      7269           jb 0x249c5
+  ────────< 0x0002495c      7665           jbe 0x249c3
+  ────────< 0x0002495e      7200           jb 0x24960
+  │││││││   ; CODE XREF from entry0 @ +0x824(x)
+  ────────> 0x00024960      250050634e     and eax, 0x4e635000
+  ────────< 0x00024965      657749         ja 0x249b1
+  │││││││   0x00024968      6e             outsb dx, byte [esi]
+  ────────< 0x00024969      7465           je 0x249d0
+  ────────< 0x0002496b      7272           jb 0x249df
+  │││││││   ; CODE XREF from entry0 @ +0x7be(x)
+  ────────> 0x0002496d      7570           jne 0x249df
+  ┌───────< 0x0002496f      7453           je 0x249c4
+  ────────< 0x00024971      796e           jns 0x249e1
+  │││││││   0x00024973      6300           arpl word [eax], ax
+  │││││││   0x00024975      0028           add byte [eax], ch
+  │││││││   0x00024977      005063         add byte [eax + 0x63], dl
+  │││││││   0x0002497a      4e             dec esi
+  ────────< 0x0002497b      657752         ja 0x249d0
+  │││││││   0x0002497e      6567697374..   imul esi, dword gs:[bp + di + 0x74], 0x654b7972 ; [0x654b7972:4]=-1
+  │││┌────< 0x00024987      7900           jns 0x24989
+  │││││││   ; CODE XREF from entry0 @ +0x84d(x)
+  │││└────> 0x00024989      002b           add byte [ebx], ch
+  │││ │││   0x0002498b      005063         add byte [eax + 0x63], dl
+  │││ │││   0x0002498e      4e             dec esi
+  │││ │││   ; CODE XREF from entry0 @ +0x7df(x)
+  ││└┌────< 0x0002498f      657753         ja 0x249e5
+  ││┌─────< 0x00024992      657276         jb 0x24a0b
+  │││││││   0x00024995      6963654772..   imul esp, dword [ebx + 0x65], 0x756f7247
+  ────────< 0x0002499c      7000           jo 0x2499e
+  │││││││   ; CODE XREFS from entry0 @ +0x81d(x), +0x862(x)
+  ────────> 0x0002499e      1f             pop ds
+  │││││││   0x0002499f      005063         add byte [eax + 0x63], dl
+  │││││││   0x000249a2      47             inc edi
+  ────────< 0x000249a3      657454         je 0x249fa
+  │││││││   0x000249a6      696d65496e..   imul ebp, dword [ebp + 0x65], 0x65746e49 ; [0x65746e49:4]=-1
+  ────────< 0x000249ad      7276           jb 0x24a25
+  │││││││   0x000249af      61             popal
+  │││││││   0x000249b0      6c             insb byte es:[edi], dx
+  │││││││   ; CODE XREF from entry0 @ +0x82b(x)
+  ────────> 0x000249b1      00706f         add byte [eax + 0x6f], dh
+  ────────< 0x000249b4      7274           jb 0x24a2a
+  │││││││   0x000249b6      636c732e       arpl word [ebx + esi*2 + 0x2e], bp
+  ────────< 0x000249ba      7379           jae 0x24a35
+  ────────< 0x000249bc      7300           jae 0x249be
+  │││││││   ; CODE XREF from entry0 @ +0x882(x)
+  ────────> 0x000249be      3f             aas
+  │││││││   0x000249bf      00496e         add byte [ecx + 0x6e], cl
+  ────────< 0x000249c2      7465           je 0x24a29
+  │││││││   ; CODE XREF from entry0 @ +0x835(x)
+  └───────> 0x000249c4      726c           jb 0x24a32
+   ││││││   0x000249c6      6f             outsd dx, dword [esi]
+   ││││││   0x000249c7      636b65         arpl word [ebx + 0x65], bp
+   ││││││   0x000249ca      6449           dec ecx
+    │││││   0x000249cc      6e             outsb dx, byte [esi]
+    │││││   0x000249cd      637265         arpl word [edx + 0x65], si
+    │││││   ; CODE XREFS from entry0 @ +0x82f(x), +0x841(x)
+  ────────> 0x000249d0      6d             insd dword es:[edi], dx
+    │││││   0x000249d1      656e           outsb dx, byte gs:[esi]
+   ┌──────< 0x000249d3      7400           je 0x249d5
+   ││││││   ; CODE XREF from entry0 @ +0x899(x)
+   └──────> 0x000249d5      0019           add byte [ecx], bl
+    │││││   0x000249d7      015274         add dword [edx + 0x74], edx
+    │││││   0x000249da      6c             insb byte es:[edi], dx
+    │││││   0x000249db      41             inc ecx
+   ┌──────< 0x000249dc      7373           jae 0x24a51
+  ┌───────< 0x000249de      657274         jb 0x24a55
+  │││││││   ; CODE XREF from entry0 @ +0x837(x)
+  ────────> 0x000249e1      003d00496e74   add byte [0x746e4900], bh   ; [0x746e4900:1]=255
+  │││┌────< 0x000249e7      65726c         jb 0x24a56
+  │││││││   0x000249ea      6f             outsd dx, dword [esi]
+  │││││││   0x000249eb      636b65         arpl word [ebx + 0x65], bp
+  │││││││   0x000249ee      6444           inc esp
+  │││││││   0x000249f0      65637265       arpl word gs:[edx + 0x65], si
+  │││││││   0x000249f4      6d             insd dword es:[edi], dx
+  │││││││   0x000249f5      656e           outsb dx, byte gs:[esi]
+  ────────< 0x000249f7      7400           je 0x249f9
+  ────────> 0x000249f9      0000           add byte [eax], al
+  │││││││   0x000249fb      0000           add byte [eax], al
+  │││││││   0x000249fd      0000           add byte [eax], al
+  │││││││   0x000249ff      00             invalid
+ -- One does not simply write documentation.
+[2K[0x0002413a]> [0m[0x0002413a]> [0m

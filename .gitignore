@@ -1,0 +1,14 @@
+# big, third-party or regenerated material - not part of the work product
+/kernel/
+/driver/
+/baseline/
+/build-oot/
+/logs/
+# scratch symlinks into logs/
+follow-*
+# build leftovers
+*.o
+*.ko
+*.mod
+*.mod.c
+.modules.cmdmod

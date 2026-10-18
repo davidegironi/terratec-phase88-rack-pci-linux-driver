@@ -1,0 +1,31 @@
+# TerraTec PHASE 88 settings, read by /root/terratec/scripts/phase88-mixer.sh
+# (which phase88-audio.service runs at boot) and by phase88-sync-setup.sh.
+#
+# Word clock master/slave over the sync cable.
+#
+# The PHASE 88 sync cable carries the clock of the master card into the clock
+# input the Envy24 calls 'IEC958 Input'.  The slave is programmed with
+# 'Multi Track Internal Clock' = 'IEC958 Input' (enum item 13) and then runs
+# off the master; the master stays on its own oscillator (item 9 = 48000 -
+# careful, item 8 is 44100, the item number is not the register value).
+#
+# Measured proof (analysis/README.md): pulling the master 8.1 % slow moved the
+# slave by the identical -81295 ppm, so the slave really is governed by the
+# cable, not by its own crystal.
+#
+# The master drives SYNC OUT even while idle, so the slave has a clock even
+# when only the slave is streaming.  But if you UNPLUG the cable, a card on
+# 'IEC958 Input' does not stall - it free runs at about 33168 frames/s - so
+# empty PHASE88_SYNC_SLAVE (or run phase88-sync-setup.sh --off) before removing
+# the cable.
+#
+# card numbering as wired on this machine:
+#   card 0  hw:Phase88   PCI 0000:03:01.0   SYNC IN   -> slave
+#   card 1  hw:Phase88_1 PCI 0000:03:02.0   SYNC OUT  -> master
+#
+PHASE88_SYNC_MASTER=1
+PHASE88_SYNC_SLAVE=0
+
+# Front panel microphone pair (inputs 7/8) versus the rear aux pair 7/8.
+# on = front input enabled (the +28/+30 dB preamp path of the rack).
+PHASE88_FRONT_MIC=on

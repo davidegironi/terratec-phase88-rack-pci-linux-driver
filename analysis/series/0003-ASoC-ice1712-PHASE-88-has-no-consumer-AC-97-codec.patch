@@ -1,0 +1,68 @@
+From 8dc8649b34855e61e37107b54ecbe2488c8f2b6e Mon Sep 17 00:00:00 2001
+From: root <root@debian.lab.local>
+Date: Tue, 13 Oct 2026 17:30:56 +0200
+Subject: [PATCH 3/5] ASoC: ice1712: PHASE 88 has no consumer AC'97 codec
+
+The CODEC byte (offset 06) of the PHASE 88 EEPROM is 0x0f: four ADCs and
+four DACs, and bit 4 clear, which tells the driver that a consumer AC'97
+codec is present.  It is not.  The AC-Link does not answer at all - even
+after a cold reset every register reads back as 0xffff - so the probe
+first waits through the AC'97 reset timeouts and then reports:
+
+  Consumer PCM code does not work well at the moment --jk
+  AC'97 0 does not respond - RESET
+  AC'97 0 access is not valid [0xffffffff], removing mixer.
+  cannot initialize ac97 for consumer, skipped
+
+and still creates the consumer and consumer (DS) PCM devices, which have
+no codec behind them: opening them fails (or used to oops, see the
+previous patch) and the sample rate rules cannot be derived.
+
+All converters of this board are the four AK4524 on the multi-track I2S
+interface, selected by ACLink = 0x80 (ICE1712_CFG_PRO_I2S), and the
+Terratec Windows driver does not touch the AC-Link of a PHASE 88 either.
+Set ICE1712_CFG_NO_CON_AC97 in the CODEC byte before it is written to PCI
+configuration 0x60, the same way the DMX 6Fire (which also has all its
+converters on the multi-track interface and no consumer codec) is handled
+just above.  The consumer AC-Link then stays in reset, the consumer IRQs
+stay masked and only the 10 out / 12 in "ICE1712 multi" device is created,
+matching the hardware and the Windows driver.
+---
+ sound/pci/ice1712/ice1712.c | 16 +++++++++++++++-
+ 1 file changed, 15 insertions(+), 1 deletion(-)
+
+diff --git a/sound/pci/ice1712/ice1712.c b/sound/pci/ice1712/ice1712.c
+index c276f7068..18e4f43a4 100644
+--- a/sound/pci/ice1712/ice1712.c
++++ b/sound/pci/ice1712/ice1712.c
+@@ -2293,12 +2293,26 @@ static int snd_ice1712_chip_init(struct snd_ice1712 *ice)
+ 	outb(ICE1712_NATIVE, ICEREG(ice, CONTROL));
+ 	udelay(200);
+ 	if (ice->eeprom.subvendor == ICE1712_SUBDEVICE_DMX6FIRE &&
+-	    !ice->dxr_enable)
++	    !ice->dxr_enable) {
+ 		/*  Set eeprom value to limit active ADCs and DACs to 6;
+ 		 *  Also disable AC97 as no hardware in standard 6fire card/box
+ 		 *  Note: DXR extensions are not currently supported
+ 		 */
+ 		ice->eeprom.data[ICE_EEP1_CODEC] = 0x3a;
++	} else if (ice->eeprom.subvendor == ICE1712_SUBDEVICE_PHASE88) {
++		/*
++		 * The EEPROM of the PHASE 88 advertises a consumer AC'97
++		 * codec, but the board does not carry one - the AC'97 link
++		 * does not answer even after a cold reset (every register
++		 * reads back as 0xffff).  All converters of this card are the
++		 * AKM codecs on the multitrack I2S interface, and the original
++		 * Terratec driver does not touch the AC'97 link either.
++		 * Without this quirk the probe wastes two seconds in the
++		 * AC'97 reset and creates consumer PCM devices that have no
++		 * codec behind them.
++		 */
++		ice->eeprom.data[ICE_EEP1_CODEC] |= ICE1712_CFG_NO_CON_AC97;
++	}
+ 	pci_write_config_byte(ice->pci, 0x60, ice->eeprom.data[ICE_EEP1_CODEC]);
+ 	pci_write_config_byte(ice->pci, 0x61, ice->eeprom.data[ICE_EEP1_ACLINK]);
+ 	pci_write_config_byte(ice->pci, 0x62, ice->eeprom.data[ICE_EEP1_I2SID]);
+-- 
+2.47.3
+

@@ -1,0 +1,142 @@
+From c021a09f3a34b4209a923c4284746ab14b72b0e0 Mon Sep 17 00:00:00 2001
+From: root <root@debian.lab.local>
+Date: Fri, 16 Oct 2026 10:11:12 +0200
+Subject: [PATCH] RFC/DO-NOT-SUBMIT: ASoC: ice1712: bring-up controls for the
+ PHASE 88 expander
+
+Turn the two write-only registers of the chip select expander into card
+level byte controls and allow the register bank of the AK4524 to be
+written again from user space:
+
+  amixer cset numid=<n> 0x20          # page 0x01: flags | chip select
+  amixer cset numid=<m> 0x10          # page 0x03: input select
+  amixer cset numid=<k> 1             # re-initialise the four codecs
+
+Clearing the flag bit of the first register takes the power from the
+codecs and they stay silent when it is asserted again, so the third
+control is needed to get audio back without reloading the module.  This is
+a measurement helper for the reverse engineering of the expander, not
+something the driver should expose.
+---
+ sound/pci/ice1712/ews.c | 98 +++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 98 insertions(+)
+
+diff --git a/sound/pci/ice1712/ews.c b/sound/pci/ice1712/ews.c
+index 07664277f..865a58760 100644
+--- a/sound/pci/ice1712/ews.c
++++ b/sound/pci/ice1712/ews.c
+@@ -271,6 +271,97 @@ static const struct snd_kcontrol_new snd_ice1712_phase88_linemic_ctls[] = {
+ 	},
+ };
+ 
++/*
++ * RFC/DEBUG - not for submission: exposes the two write-only registers of the
++ * PHASE 88 expander so that their meaning can be measured with a signal
++ * connected to the inputs, without reloading the module for every try.
++ *
++ *   amixer -c <card> cset numid=<n> 0x30     (page 0x01: flags | chip select)
++ *   amixer -c <card> cset numid=<m> 0xff     (page 0x03: input select)
++ */
++static int snd_ice1712_phase88_debug_info(struct snd_kcontrol *kcontrol,
++					  struct snd_ctl_elem_info *uinfo)
++{
++	uinfo->type = SNDRV_CTL_ELEM_TYPE_BYTES;
++	uinfo->count = 1;
++	return 0;
++}
++
++static int snd_ice1712_phase88_debug_get(struct snd_kcontrol *kcontrol,
++					 struct snd_ctl_elem_value *ucontrol)
++{
++	struct snd_ice1712 *ice = snd_kcontrol_chip(kcontrol);
++	struct ews_spec *spec = ice->spec;
++
++	ucontrol->value.bytes.data[0] =
++		kcontrol->private_value == ICE1712_PHASE88_INPUT_PAGE ?
++			spec->pcf8575_input : spec->pcf8575_data;
++	return 0;
++}
++
++static int snd_ice1712_phase88_debug_put(struct snd_kcontrol *kcontrol,
++					 struct snd_ctl_elem_value *ucontrol)
++{
++	struct snd_ice1712 *ice = snd_kcontrol_chip(kcontrol);
++	struct ews_spec *spec = ice->spec;
++	unsigned char page = kcontrol->private_value;
++	unsigned char val = ucontrol->value.bytes.data[0];
++	unsigned char *shadow;
++	int err;
++
++	if (page == 0xff) {
++		/* the codecs lose power when the flags are toggled; allow the
++		 * register bank to be written again from user space.  Note
++		 * that snd_akm4xxx_init() selects the codecs and takes care of
++		 * the GPIO lines itself, so no lock may be held here.
++		 */
++		if (val)
++			snd_akm4xxx_init(ice->akm);
++		return 1;
++	}
++	if (page == ICE1712_PHASE88_INPUT_PAGE) {
++		shadow = &spec->pcf8575_input;
++	} else {
++		/* never drop the chip select nibble of the first register */
++		val = (val & 0xf0) | (spec->pcf8575_data & 0x0f);
++		shadow = &spec->pcf8575_data;
++	}
++	if (*shadow == val)
++		return 0;
++	err = snd_ice1712_phase88_write(ice, page, val);
++	if (err < 0)
++		return err;
++	*shadow = val;
++	return 1;
++}
++
++static const struct snd_kcontrol_new snd_ice1712_phase88_debug_ctls[] = {
++	{
++		.iface = SNDRV_CTL_ELEM_IFACE_CARD,
++		.name = "Phase88 Debug Expander Page 1",
++		.info = snd_ice1712_phase88_debug_info,
++		.get = snd_ice1712_phase88_debug_get,
++		.put = snd_ice1712_phase88_debug_put,
++		.private_value = ICE1712_PHASE88_OUTPUT_PAGE,
++	},
++	{
++		.iface = SNDRV_CTL_ELEM_IFACE_CARD,
++		.name = "Phase88 Debug Expander Page 3",
++		.info = snd_ice1712_phase88_debug_info,
++		.get = snd_ice1712_phase88_debug_get,
++		.put = snd_ice1712_phase88_debug_put,
++		.private_value = ICE1712_PHASE88_INPUT_PAGE,
++	},
++	{
++		.iface = SNDRV_CTL_ELEM_IFACE_CARD,
++		.name = "Phase88 Debug Codec Init",
++		.info = snd_ice1712_phase88_debug_info,
++		.get = snd_ice1712_phase88_debug_get,
++		.put = snd_ice1712_phase88_debug_put,
++		.private_value = 0xff,
++	},
++};
++
+ /* AK4524 chip select; address 0x48 bit 0-3 */
+ static int snd_ice1712_ews88mt_chip_select(struct snd_ice1712 *ice, int chip_mask)
+ {
+@@ -1170,6 +1261,13 @@ static int snd_ice1712_ews_add_controls(struct snd_ice1712 *ice)
+ 			if (err < 0)
+ 				return err;
+ 		}
++		for (idx = 0; idx < ARRAY_SIZE(snd_ice1712_phase88_debug_ctls); idx++) {
++			err = snd_ctl_add(ice->card,
++					snd_ctl_new1(&snd_ice1712_phase88_debug_ctls[idx],
++						   ice));
++			if (err < 0)
++				return err;
++		}
+ 		break;
+ 	case ICE1712_SUBDEVICE_EWS88MT:
+ 	case ICE1712_SUBDEVICE_EWS88MT_NEW:
+-- 
+2.47.3
+
