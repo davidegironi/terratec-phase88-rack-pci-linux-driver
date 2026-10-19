@@ -73,6 +73,9 @@ the distro copy.  Full details, and the run that proves it, are in
 on 2026-10-18 against Debian's stock `6.12.111+deb13-amd64`:
 
 ```
+# note the versioned package name: plain 'apt-get install linux-source' fails
+# with 'Depends: linux-source-6.12 (= 6.12.111-1) but 6.12.113-1 is to be
+# installed' whenever the running kernel is not the newest in the archive.
 apt-get install -y build-essential linux-headers-$(uname -r) linux-source-6.12
 tar -xf /usr/src/linux-source-6.12.tar.xz && cd linux-source-6.12
 patch -p1 < phase88-fix.patch          # applied with offsets only, no rejects
