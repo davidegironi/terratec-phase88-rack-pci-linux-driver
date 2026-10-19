@@ -56,11 +56,19 @@ set_ctl 'ADC Volume' 127
 
 OUT=/tmp/phase88-loopback.raw
 PLAYLOG=/tmp/phase88-loopback-play.log
+# -p is --period-time in MICROSECONDS, not frames (there is no -B here): 21000 us
+# is 1008 frames at
+# 48 kHz, the same granularity JACK uses here.  Asking for 1024 us gives a
+# 196-frame buffer that underruns the moment anything else on the box is busy
+# (speaker-test then reports "Write error: -32, Broken pipe" which is -EPIPE,
+# not a driver fault).
 timeout -s INT $((SECS + 6)) speaker-test -D "$DEV" -c 10 -r 48000 \
-	--format S32_LE -t sine -f 1000 -l 0 -p 1024 >"$PLAYLOG" 2>&1 &
+	--format S32_LE -t sine -f 1000 -l 0 -p 21000 >"$PLAYLOG" 2>&1 &
 PLAY=$!
 sleep 1
-if ! timeout -s INT $((SECS + 2)) arecord -D "$DEV" -c 12 -r 48000 -f S32_LE -t raw "$OUT"; then
+# -d lets arecord finish by itself with status 0; the timeout is only a safety
+# net (a timeout kill would return 124 and look like a capture failure).
+if ! timeout -s INT $((SECS + 8)) arecord -d "$SECS" -D "$DEV" -c 12 -r 48000 -f S32_LE -t raw "$OUT"; then
 	echo "arecord failed - playback side said:"
 	sed 's/^/   /' "$PLAYLOG"
 	rm -f "$OUT"
@@ -100,15 +108,27 @@ for c in (10, 11):
     pk = peak(c)
     print(f"   capture ch{c + 1}: peak {pk:>11d} {db(pk)}")
 print()
-if peak(10) == 0:
-    print("RESULT: the internal monitor loop is silent too - digital path broken")
+# Thresholds: the tone is played at about full scale and the monitor mixer is
+# at unity, so anything near 0 dBFS is the tone.  An unconnected AK4524 input
+# idles at -58 dBFS or below, so -40 dBFS is used to tell 'a signal is there'
+# from noise - a peak of a few million counts is NOT a loopback.
+FULLSCALE = 2**31
+TONE = FULLSCALE * 10 ** (-20 / 20)
+SIGNAL = FULLSCALE * 10 ** (-40 / 20)
+monitor = max(peak(10), peak(11))
+if monitor < TONE:
+    print("RESULT: the internal monitor loop does not carry the tone - the digital")
+    print("        path is broken (check 'Multi Playback Switch' and the monitor)")
     sys.exit(1)
-if analog == 0:
-    print("RESULT: digital path ok, no signal on the analog inputs.")
+print("digital path ok: the 1 kHz tone is on the monitor mix (ch11/12)")
+if analog < SIGNAL:
+    print("RESULT: no analog loopback - the eight analog inputs only show their")
+    print(f"        noise floor (loudest was {20 * math.log10(analog / FULLSCALE):.1f} dBFS).")
     print("        Connect Out 1 -> In 1 (or a source to any input) and rerun;")
     print("        with speakers on outputs 1/2 the 1 kHz tone must be audible.")
     sys.exit(2)
-print("RESULT: analog output -> input path works (peak %d)" % analog)
+print("RESULT: analog output -> input path works (peak %d, %.1f dBFS)"
+      % (analog, 20 * math.log10(analog / FULLSCALE)))
 EOF
 rc=$?
 rm -f "$OUT"

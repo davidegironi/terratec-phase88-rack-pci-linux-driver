@@ -22,6 +22,10 @@
 #                                            OUT's MIDI OUT -> IN's MIDI IN
 #   phase88-midi-test.sh --note              also send a note so a synth or
 #                                            keyboard attached to the OUT plays
+#   phase88-midi-test.sh --watch [hw:X,Y] [secs]
+#                                            listen only and print what arrives:
+#                                            for "I pressed a key on the synth"
+#                                            or "does the second DIN react"
 #
 # Nothing here needs JACK.  jackd with a MIDI backend and PipeWire can hold the
 # ports; the script tells you when that is the case, it does not kill anything.
@@ -31,6 +35,8 @@ A_OUT="hw:Phase88"
 A_IN="hw:Phase88"
 NOTE=0
 CROSS=0
+WATCH=0
+WSECS=15
 
 OUTSET=0
 INSET=0
@@ -38,7 +44,9 @@ while [ $# -gt 0 ]; do
 	case "$1" in
 		--cross) CROSS=1; shift ;;
 		--note)  NOTE=1; shift ;;
-		-h|--help) sed -n '2,26p' "$0"; exit 0 ;;
+		--watch) WATCH=1; shift ;;
+		[0-9]*)  WSECS="$1"; shift ;;   # bare number = watch/listen seconds
+		-h|--help) sed -n '2,30p' "$0"; exit 0 ;;
 		hw:*)
 			# first port argument is the sender, the second the listener
 			if [ "$OUTSET" = 0 ]; then A_OUT="$1"; OUTSET=1
@@ -59,6 +67,29 @@ fi
 if [ "$CROSS" = 1 ] && [ "$A_OUT" = "$A_IN" ]; then
 	echo "--cross with the same port on both sides is a loopback; drop --cross" >&2
 	exit 2
+fi
+
+# --watch: pure listener, nothing to compare against.  It answers the question
+# "is anything at all arriving on this DIN?", which is what you need when a
+# synth is attached and you do not know which of the two UARTs is wired.
+if [ "$WATCH" = 1 ]; then
+	GOT=$(mktemp /tmp/p88-watch-XXXX.raw)
+	echo "phase88-midi-test: listening on $A_IN for $WSECS s - send something now"
+	echo "  (press a key on a synth wired to that DIN, or run amidi -s on the other end)"
+	timeout $((WSECS + 5)) amidi -p "$A_IN" -r "$GOT" -t "$WSECS" >/dev/null 2>&1
+	N=$(wc -c < "$GOT")
+	echo "  received $N bytes"
+	if [ "$N" -gt 0 ]; then
+		od -Ad -tx1z "$GOT" | head -12
+		rm -f "$GOT"
+		exit 0
+	fi
+	rm -f "$GOT"
+	echo "  nothing arrived.  If you are sure something was sent, try the other"
+	echo "  UART of that card (hw:0,1 or hw:1,1 - the second one only exists when"
+	echo "  snd_ice1712 is loaded with mpu401_2=1), and check that the cable goes"
+	echo "  into the connector labelled OUT at the sending device."
+	exit 1
 fi
 
 # Payload: a SysEx block (byte-exact, no timing, so it is easy to compare) plus

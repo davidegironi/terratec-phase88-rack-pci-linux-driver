@@ -314,9 +314,23 @@ IO  hw:1,0    TerraTec Phase88 MIDI
 Terratec Windows driver installs **two**: `[PHASE88.Interface.Midi1]` and
 `[PHASE88.Interface.Midi2]`, "PHASE88 MIDI Port 1/2", in
 `driver/windows2000_vista_xp/ews88wdm.inf`, whose history says
-`17-Sep-02 - Mic28 Extensions (Midi 2)`.  If your rack has two MIDI INs, say
-so: enabling the second UART is a one-line quirk in the same place as the
-AC'97 quirk, plus a test.)
+`17-Sep-02 - Mic28 Extensions (Midi 2)`.)
+
+Both UARTs are inside the Envy24, so the second one can be registered by hand
+with a driver parameter (an experiment of ours, off by default, see the
+`RFC/DO-NOT-SUBMIT` commit "add a mpu401_2 parameter"):
+
+```
+# /etc/modprobe.d/phase88.conf
+options snd_ice1712 mpu401_2=1
+```
+
+After a reboot (or `rmmod snd_ice1712 && modprobe snd_ice1712`) `amidi -l`
+then lists four ports on a two-card box - `hw:0,0 hw:0,1 hw:1,0 hw:1,1`.
+Whether the extra DIN connector on the rack is wired to that second UART is a
+hardware question the table below answers.  If it is not wired, delete
+`/etc/modprobe.d/phase88.conf` again: an unconnected input on a shared
+interrupt line is only noise.
 
 What is proven: the rawmidi devices open, a `SysEx` payload written with
 `amidi -s` is accepted by the driver (no error, correct byte count), the
@@ -326,16 +340,43 @@ What is **not** proven without a cable: that the DIN connectors are wired to
 those UARTs.  The driver happily accepts writes into an unconnected port.  To
 test, loop a cable and run:
 
-```
-/root/terratec/scripts/phase88-midi-test.sh                 # OUT -> IN on the same rack
-/root/terratec/scripts/phase88-midi-test.sh hw:Phase88_1    # the other card
-/root/terratec/scripts/phase88-midi-test.sh --cross hw:Phase88 hw:Phase88_1   # rack A out -> rack B in
-```
-
 It sends a byte-exact `SysEx` frame three times and compares what came back,
 and it warns when jackd or PipeWire hold the port (exclusive use gives `EBUSY`,
 which is not a hardware fault).  JACK is not needed for ALSA MIDI apps
 (`aconnect`, `aplaymidi`, `arecordmidi`, hydrogen, ...).
+
+### the test matrix
+
+One cable is enough for all of it, as long as you move it.  `hw:X,0` is the
+UART Linux registers by default, `hw:X,1` the one that appears with
+`mpu401_2=1`:
+
+| # | cable | command | what a PASS proves |
+|---|-------|---------|--------------------|
+| 1 | rack A `OUT` -> rack A `IN` | `phase88-midi-test.sh hw:0,0` | the DIN pair of that rack is wired, port 1 works |
+| 2 | same cable, unchanged | `phase88-midi-test.sh hw:0,0 hw:0,1` | the rack's `IN` is really UART 2 (so the two DINs are swapped vs Linux) |
+| 3 | same cable, unchanged | `phase88-midi-test.sh hw:0,1 hw:0,0` | the rack's `OUT` is really UART 2 |
+| 4 | same cable, unchanged | `phase88-midi-test.sh hw:0,1` | both connectors are on UART 2, port 1 is dead |
+| 5 | rack A `OUT` -> rack B `IN` | `phase88-midi-test.sh --cross hw:0,0 hw:1,0` | the two racks talk to each other |
+| 6 | keyboard/synth -> any rack `IN` | `phase88-midi-test.sh --watch hw:0,0 15` | "does Linux see my keyboard", and on which port |
+
+Run 1 is the one that matters: if it passes, MIDI works and the rest is only
+about which of the two UARTs each socket uses.  A `NO DATA RECEIVED` after run
+1 with a known-good cable means that DIN is not wired to the Envy24 at all -
+the driver side is already proven by the fact that `amidi` reports no error
+while sending.
+
+For JACK MIDI (Reaper, ...), jackd needs a MIDI backend, which it does not
+enable by default:
+
+```
+jackd -d alsa -d phase88x2 -r 48000 -p 1024 -X seq     # one JACK MIDI port per sequencer port
+jackd -d alsa -d phase88x2 -r 48000 -p 1024 -X raw     # one per raw ALSA MIDI device
+```
+
+In QJackCtl that is the "Enable ALSA MIDI" option (it maps to `-X seq`).  With
+`-X seq` you get one `system:Midi` port per card, with `-X raw` two per card
+once `mpu401_2=1` is set.  `aconnect -l` shows what the sequencer sees.
 
 ## 9. Troubleshooting
 

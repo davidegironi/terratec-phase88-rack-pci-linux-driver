@@ -93,7 +93,7 @@ T cat "/proc/asound/card$CARD/ak4524" 2>/dev/null | head -20 | sed 's/^/        
 PCMC="hw:$CARD,0"
 for rate in 44100 48000 96000; do
 	echo "--- playback $rate Hz, 10 ch S32_LE ---"
-	( T speaker-test -D "$PCMC" -c 10 -r "$rate" --format S32_LE -t sinc -l 0 -p 2048 >/tmp/phase88-play.log 2>&1 & )
+	( T speaker-test -D "$PCMC" -c 10 -r "$rate" --format S32_LE -t sinc -l 0 -p 21000 >/tmp/phase88-play.log 2>&1 & )
 	sleep 2
 	st=$(T awk '/state/ {print $2; exit}' "/proc/asound/card$CARD/pcm0p/sub0/status" 2>/dev/null)
 	p1=$(T awk '/hw_ptr/ {print $3; exit}' "/proc/asound/card$CARD/pcm0p/sub0/status" 2>/dev/null)

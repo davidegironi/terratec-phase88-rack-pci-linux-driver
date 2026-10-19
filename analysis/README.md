@@ -932,3 +932,76 @@ Two `acp_delegate` worker runs died with exit 143 (`timed out: no output for
 5m`) while running silent `apt`/`tar`/`make` steps, and the resumed run produced
 an empty activity log.  Long quiet commands belong in the main session with
 background + short polls; that is what finished the Debian build.
+
+## 2026-10-19: two-card confirmation, and the second MIDI UART
+
+User confirmed (m00951): "Ok, repaer test on all 8+8 port worked" - the
+combined `phase88x2` device is working in Reaper with both racks, which also
+closes the "are the outputs audible" question from m00267.
+
+Then the MIDI question (m00777 item 3).  Inventory:
+
+```
+$ amidi -l                          # before
+IO  hw:0,0  TerraTec Phase88 MIDI
+IO  hw:1,0  TerraTec Phase88 MIDI
+```
+
+Only one UART per card because the EEPROM `Codec` byte reads `0x0f`, i.e.
+`ICE1712_CFG_2xMPU401` (bit `0x20` of `ICE_EEP1_CODEC`) is clear, and
+`snd_ice1712_midi_init()` is only called a second time when it is set
+(`ice1712.c:2632`); the second UART lives at MMIO `0x1c/0x1d`
+(`ICE1712_REG_MPU2_CTRL/DATA`) and signals on `ICE1712_IRQ_MPU2` (`0x20`).
+The Terratec Windows driver installs two ports (`ews88wdm.inf`
+`[PHASE88.Interface.Midi1]`, `[PHASE88.Interface.Midi2]`, "PHASE88 MIDI Port
+1/2"), and the INF changelog line 10 says `17-Sep-02 (Cl) - Mic28 Extensions
+(Midi 2)`, which is the same Mic28 block that owns the mic input - so the
+second UART is probably the mic-panel MIDI, not a rack connector.  Unresolved
+without looking at the rack.
+
+Experiment committed as a second RFC commit, `9b45794e6 "RFC/DO-NOT-SUBMIT:
+ASoC: ice1712: add a mpu401_2 parameter for the PHASE 88"`: sets
+`ICE1712_CFG_2xMPU401` when the parameter is on, default off.  Installed via
+`/etc/modprobe.d/phase88.conf` (`options snd_ice1712 mpu401_2=1`) so the user
+can test without remembering anything:
+
+```
+$ amidi -l                          # after
+IO  hw:0,0  TerraTec Phase88 MIDI
+IO  hw:0,1  TerraTec Phase88 MIDI
+IO  hw:1,0  TerraTec Phase88 MIDI
+IO  hw:1,1  TerraTec Phase88 MIDI
+```
+
+Measured with it on: no oops, no `WARNING`, both cards still capture
+(958 104 and 958 240 nonzero words of 1 152 000 in 2 s at 48 k/12 ch S32_LE),
+and **no interrupt storm** - 0 interrupts on irq 22 and irq 23 over 10 s of
+idle, which was the risk of enabling a floating UART on a line shared with
+`ehci_hcd:usb1, uhci_hcd:usb2`.
+
+`scripts/phase88-midi-test.sh` gained a `--watch [hw:X,Y] [secs]` listener mode
+and the guide has a 6-row test matrix (loopback on port 0, then the same cable
+against port 1, so the four cases "both DINs on UART 1 / IN on UART 2 / OUT on
+UART 2 / both on UART 2" are distinguished with a single cable move).
+
+Scripts fixed on the way, all of them bugs in *my* helpers, not in the driver:
+- `phase88-loopback.sh` asked `speaker-test` for `-p 1024`, but `-p` is
+  `--period-time` in **microseconds**: a 196-frame buffer that underruns as
+  soon as the box is busy (rustdesk sits at ~57 % CPU here) and printed
+  `Write error: -32, Broken pipe`.  Now `-p 21000` (period 1008 / buffer 4032);
+  `speaker-test` 1.2.14 has no `-B` option at all.
+- the same script's `arecord` had no `-d`, so the safety `timeout` reaped it
+  with 124 and the `if !` branch called that a capture failure.  Now
+  `arecord -d $SECS` inside the timeout, and the verdict needs a real signal
+  (-40 dBFS) before claiming an analog loopback - the noise floor of an idle
+  AK4524 is about -56 dBFS and used to be reported as "works".  Current honest
+  result with nothing connected: monitor mix carries the 1 kHz tone
+  (ch11/12 at 0.0/-1.9 dBFS), inputs 1-8 at -56..-85 dBFS, `exit 2`.
+- `depmod -a 6.18.55` on this box takes **2 m 24 s**, which is what made an
+  `install && depmod && rmmod && modprobe` chain look stuck: the 120 s tool
+  timeout fired inside depmod and the module was never reloaded.  Run depmod on
+  its own here.
+
+Commit layout now: five submission commits `941c14e58..HEAD~2`, then two
+`RFC/DO-NOT-SUBMIT` ones (`c021a09f3` expander bring-up controls, `9b45794e6`
+mpu401_2).  Nothing is submitted yet.
