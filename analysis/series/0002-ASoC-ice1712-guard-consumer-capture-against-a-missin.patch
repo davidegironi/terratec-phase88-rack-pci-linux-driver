@@ -1,7 +1,7 @@
 From 0cfa29122bbf0eb2e1d91e81c29624f9f1a139aa Mon Sep 17 00:00:00 2001
 From: root <root@debian.lab.local>
 Date: Tue, 13 Oct 2026 17:20:42 +0200
-Subject: [PATCH 2/5] ASoC: ice1712: guard consumer capture against a missing
+Subject: [PATCH 2/6] ASoC: ice1712: guard consumer capture against a missing
  AC'97 codec
 
 snd_ice1712_ac97_mixer() only warns when the AC'97 codec does not answer

@@ -55,7 +55,7 @@ patch -p1 --dry-run < /path/to/phase88-fix.patch    # look at the offsets first
 patch -p1           < /path/to/phase88-fix.patch
 ```
 
-`phase88-fix.patch` is the combined clean series (5 commits, 313 lines, files
+`phase88-fix.patch` is the combined clean series (6 commits, 332 lines, files
 `sound/pci/ice1712/{ice1712.c,ews.c,ews.h}`).  On this box it printed:
 
 ```

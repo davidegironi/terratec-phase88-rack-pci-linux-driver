@@ -1005,3 +1005,92 @@ Scripts fixed on the way, all of them bugs in *my* helpers, not in the driver:
 Commit layout now: five submission commits `941c14e58..HEAD~2`, then two
 `RFC/DO-NOT-SUBMIT` ones (`c021a09f3` expander bring-up controls, `9b45794e6`
 mpu401_2).  Nothing is submitted yet.
+
+## 2026-10-19 (afternoon): the rear MIDI socket is real - second UART made permanent
+
+User reported (m01141): *"i set the loopback cable on the front
+of rack MIDI of first board, phase88-midi-test.sh reyutn data send and received,
+RESULT: MIDI WORKS. There is a MIDI 2 interface on the back of the rack to be
+tested. Also prepare sh to test midi on rack #2 ... If you want you can run test
+rack #1 MIDI 2 cause I've plugged the loopback on the MIDI 2 of rack #1."*
+
+So the FRONT socket of rack #1 is confirmed working by the user (`hw:0,0`, the
+UART the stock driver registers too).  With the cable moved to the REAR socket I
+probed every combination on both cards:
+
+```
+card 0 send hw:0,0 -> listen hw:0,0 : NO DATA
+card 0 send hw:0,0 -> listen hw:0,1 : received '00'          <- see below
+card 0 send hw:0,1 -> listen hw:0,0 : NO DATA
+card 0 send hw:0,1 -> listen hw:0,1 : MIDI WORKS (3 frames, byte-exact)
+card 1 (all four)                   : NO DATA (no cable in rack #2)
+```
+
+**The rear connector is the second MPU-401 UART.**  That settles the question
+that the `mpu401_2` parameter was written for, so the parameter is gone and the
+EEPROM bit is now set unconditionally for this board:
+
+* new submission commit `b854c1887 "ASoC: ice1712: claim the second MIDI port of
+  the PHASE 88"` (sets `ICE1712_CFG_2xMPU401` in the same fixup that sets
+  `ICE1712_CFG_NO_CON_AC97`);
+* `/etc/modprobe.d/phase88.conf` deleted again, and verified: after
+  `rmmod snd_ice1712 && modprobe snd_ice1712` the parameter list under
+  `/sys/module/snd_ice1712/parameters/` no longer contains `mpu401_2` while
+  `amidi -l` still shows four ports (hw:0,0 hw:0,1 hw:1,0 hw:1,1) and the rear
+  loopback still passes;
+* the history was reordered so the submission commits stay contiguous - the RFC
+  expander commit was re-created by cherry-pick and is now `d2db56036` (was
+  `c021a09f3`).  Submission set = `941c14e58..HEAD~1`, **six** patches,
+  regenerated `analysis/series/0001..0006-*.patch` and `analysis/phase88-fix.patch`
+  (332 lines).  checkpatch `--strict`: 0 errors, 0 warnings, 4 checks (two
+  continuation-line alignments in the Line/Mic hunk, `(0x42>>1)` spacing kept to
+  match the surrounding EWS code, and `Avoid CamelCase` on the pre-existing
+  `ICE1712_CFG_2xMPU401` macro name).
+
+The single stray `00` byte seen on the rear RX while transmitting on the front
+UART is not explained.  A break condition reads as `0x00`, so it is most likely
+a line glitch when the other UART is opened, not data; it never arrived as a
+frame and did not disturb the pass/fail verdict.
+
+Socket map, measured:
+
+| rack socket | ALSA | sequencer |
+|---|---|---|
+| front "MIDI 1" | `hw:<card>,0` | `<client>:0` |
+| rear "MIDI 2"  | `hw:<card>,1` | `<client>:32` |
+
+Both keep the same name (`TerraTec Phase88 MIDI`), so only the number tells them
+apart; under `jackd -X seq` the log shows `TerraTec-Phase88:midi/{playback,
+capture}_1` and `_33` per card, and both cards share that base name too.
+
+New `scripts/phase88-midi-racks.sh` walks the four sockets the user asked about
+(rack 1 front/rear, rack 2 front/rear) with ONE cable, prompting between
+sockets: `--list` prints the map with PCI address and clock role, `--probe
+<card>` tries all four send/listen combinations, `--identify <card>` plays
+440 Hz on outputs 1/2 so you can see which rack answers, `--yes` runs all four
+without prompting.  Rack numbering defaults to rack 1 = clock slave = card 0,
+rack 2 = master = card 1, overridable with `PHASE88_RACK1` / `PHASE88_RACK2` in
+`/etc/default/phase88`.  Measured with the cable left in rack #1 rear:
+
+```
+PASS    rack #1 MIDI 2 (rear)  hw:0,1
+FAIL    rack #1 MIDI 1 (front)  hw:0,0     (correct: cable is in the rear)
+FAIL    rack #2 MIDI 1 (front)  hw:1,0     (correct: no cable in rack #2)
+FAIL    rack #2 MIDI 2 (rear)   hw:1,1     (correct: no cable in rack #2)
+```
+
+`phase88-midi-test.sh` also got a `PORT BUSY` verdict (exit 3): `jackd -X raw`
+(and Reaper's own ALSA MIDI backend) hold `/dev/snd/midiCxDy`, rawmidi allows
+one client, and `amidi: cannot open port "hw:0,1": Device or resource busy`
+otherwise looks like a hardware fault.  Measured both ways: jackd up -> exit 3
+with the explanation, jackd stopped -> `MIDI WORKS`.
+
+Open question left by this session: sending with `aplaymidi -p 16:32` while
+jackd ran produced nothing in `jack_midi_dump`, so the ALSA-seq -> JACK relay is
+unverified (the loopback itself is proven at the rawmidi level).  Needs another
+look, probably it is the same exclusivity, or jackd's seq client not subscribing
+to the hardware ports.
+
+Machine left: jackd stopped, no stale `/dev/shm/jack_*`, card 0 = clock slave
+(item 13), card 1 = master (item 9), both cards unmuted with the front input on,
+four MIDI ports each, both git trees clean.

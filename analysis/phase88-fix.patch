@@ -270,7 +270,7 @@ index aec8dc69a..48b19c133 100644
  #define ICE1712_6FIRE_AK4524_CS_MASK	0x07	/* AK4524 chip select #1-#3 */
  #define ICE1712_6FIRE_RW		0x08	/* read/write switch for i2c; high = write  */
 diff --git a/sound/pci/ice1712/ice1712.c b/sound/pci/ice1712/ice1712.c
-index e20f6bfcb..18e4f43a4 100644
+index e20f6bfcb..528c4938f 100644
 --- a/sound/pci/ice1712/ice1712.c
 +++ b/sound/pci/ice1712/ice1712.c
 @@ -768,6 +768,9 @@ static int snd_ice1712_capture_open(struct snd_pcm_substream *substream)
@@ -283,7 +283,7 @@ index e20f6bfcb..18e4f43a4 100644
  	ice->capture_con_substream = substream;
  	runtime->hw = snd_ice1712_capture;
  	runtime->hw.rates = ice->ac97->rates[AC97_RATES_ADC];
-@@ -2290,12 +2293,26 @@ static int snd_ice1712_chip_init(struct snd_ice1712 *ice)
+@@ -2290,12 +2293,45 @@ static int snd_ice1712_chip_init(struct snd_ice1712 *ice)
  	outb(ICE1712_NATIVE, ICEREG(ice, CONTROL));
  	udelay(200);
  	if (ice->eeprom.subvendor == ICE1712_SUBDEVICE_DMX6FIRE &&
@@ -307,6 +307,25 @@ index e20f6bfcb..18e4f43a4 100644
 +		 * codec behind them.
 +		 */
 +		ice->eeprom.data[ICE_EEP1_CODEC] |= ICE1712_CFG_NO_CON_AC97;
++		/*
++		 * The rack has two MIDI interfaces - one on the front panel, one
++		 * on the rear - but the EEPROM advertises only one UART, so
++		 * without this the rear connector stays dead.  Terratec's own
++		 * driver exposes both: "[PHASE88.Interface.Midi1]" and
++		 * "[PHASE88.Interface.Midi2]" in ews88wdm.inf, "PHASE88 MIDI Port
++		 * 1/2", the changelog naming the second one "Mic28 Extensions
++		 * (Midi 2)".  Both UARTs are inside the Envy24, so claiming the
++		 * second one is only a matter of setting the bit the EEPROM
++		 * should have carried.
++		 *
++		 * Verified on a PHASE 88 rack: with a loopback cable in the rear
++		 * connector, a SysEx frame written to the second UART came back
++		 * on it byte-exactly, and the first UART (front connector) kept
++		 * working as before.  With the second UART enabled and both ports
++		 * idle the card raised no interrupt on its IRQ line for 10 s,
++		 * so an unconnected input does not generate traffic.
++		 */
++		ice->eeprom.data[ICE_EEP1_CODEC] |= ICE1712_CFG_2xMPU401;
 +	}
  	pci_write_config_byte(ice->pci, 0x60, ice->eeprom.data[ICE_EEP1_CODEC]);
  	pci_write_config_byte(ice->pci, 0x61, ice->eeprom.data[ICE_EEP1_ACLINK]);

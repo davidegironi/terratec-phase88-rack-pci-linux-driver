@@ -52,10 +52,10 @@ ad0f14e94 ASoC: ice1712: fix PHASE 88 chip select expander address
 8dc8649b3 ASoC: ice1712: PHASE 88 has no consumer AC'97 codec
 eb9089386 ASoC: ice1712: initialise the second PHASE 88 expander register
 f15b12d5a ASoC: ice1712: add the PHASE 88 Line/Mic input switches
-c021a09f3 RFC/DO-NOT-SUBMIT: bring-up controls for the PHASE 88 expander   <- drop this one
+9b45794e6 RFC/DO-NOT-SUBMIT: bring-up controls for the PHASE 88 expander   <- drop this one
 ```
 
-Patch files: `/root/terratec/analysis/series/0001..0005-*.patch` (the clean
+Patch files: `/root/terratec/analysis/series/0001..0006-*.patch` (the clean
 set), combined `/root/terratec/analysis/phase88-fix.patch` (313 lines),
 `/root/terratec/analysis/0001-RFC-DO-NOT-SUBMIT-*.patch`.  Only three files are
 touched: `sound/pci/ice1712/{ice1712.c,ews.c,ews.h}`.  `checkpatch.pl` is clean
@@ -303,73 +303,86 @@ Handy scripts (all in `/root/terratec/scripts/`):
 
 ## 8. MIDI
 
-What Linux sees today, one port per card:
+Both MIDI interfaces of a rack work, and they are the two MPU-401 UARTs of the
+Envy24 (`MMIO 0x0c/0x0d` and `0x1c/0x1d`, IRQ bits `0x80` and `0x20`):
+
+| socket | ALSA port | ALSA sequencer port | JACK (`jackd -X seq`) |
+|--------|-----------|-------------------|----------------------|
+| rack **front**, "MIDI 1" | `hw:<card>,0` | `<client>:0`  | `...:midi/capture_1`    |
+| rack **rear**, "MIDI 2"  | `hw:<card>,1` | `<client>:32` | `...:midi/capture_33`   |
+
+`amidi -l` and `aconnect -l` print the **same** name for both (`TerraTec
+Phase88 MIDI`) - the driver has no per-port name for this board - so the port
+number is the only thing that tells them apart: `0` = front, `1` (or sequencer
+`32`) = rear.  Under JACK the two cards are also both called
+`TerraTec-Phase88:midi/*`, so use the order in the port list, which is card
+order: card 0 front, card 0 rear, card 1 front, card 1 rear.
 
 ```
 $ amidi -l
 Dir Device    Name
 IO  hw:0,0    TerraTec Phase88 MIDI
+IO  hw:0,1    TerraTec Phase88 MIDI
 IO  hw:1,0    TerraTec Phase88 MIDI
+IO  hw:1,1    TerraTec Phase88 MIDI
 ```
 
-(`ICE1712_CFG_2xMPU401` is bit `0x20` of the EEPROM `Codec` byte, which reads
-`0x0f` raw on this card, so the driver creates only the first UART.  The
-Terratec Windows driver installs **two**: `[PHASE88.Interface.Midi1]` and
-`[PHASE88.Interface.Midi2]`, "PHASE88 MIDI Port 1/2", in
-`driver/windows2000_vista_xp/ews88wdm.inf`, whose history says
-`17-Sep-02 - Mic28 Extensions (Midi 2)`.)
+The rear one does **not** work with a stock driver: the EEPROM `Codec` byte of
+this board reads `0x0f`, so `ICE1712_CFG_2xMPU401` (`0x20`) is clear and
+`snd_ice1712_midi_init()` is called only once.  Setting that bit in the same
+place as the other EEPROM corrections (commit "ASoC: ice1712: claim the second
+MIDI port of the PHASE 88", `series/0006-*.patch`) is all it took.  Terratec's
+Windows driver has always exposed both: `[PHASE88.Interface.Midi1]` and
+`[PHASE88.Interface.Midi2]`, "PHASE88 MIDI Port 1/2" in
+`driver/windows2000_vista_xp/ews88wdm.inf`, whose changelog calls the second
+one `17-Sep-02 (Cl) - Mic28 Extensions (Midi 2)`.
 
-Both UARTs are inside the Envy24, so the second one can be registered by hand
-with a driver parameter (an experiment of ours, off by default, see the
-`RFC/DO-NOT-SUBMIT` commit "add a mpu401_2 parameter"):
+Measured, not assumed: with a loopback cable in the **rear** socket of rack #1,
+a SysEx frame sent to `hw:0,1` came back byte-exactly (three frames) while
+every other combination stayed silent, and the front socket still worked on
+`hw:0,0` as it did before.  With both UARTs registered and idle the card raised
+**zero** interrupts on its IRQ line in 10 s, so an unconnected DIN does not put
+traffic on the (USB-shared) interrupt line.
+
+### testing the four sockets
+
+One cable is enough - `phase88-midi-racks.sh` walks the four sockets and asks
+you to move it:
 
 ```
-# /etc/modprobe.d/phase88.conf
-options snd_ice1712 mpu401_2=1
+/root/terratec/scripts/phase88-midi-racks.sh            # prompts per socket
+/root/terratec/scripts/phase88-midi-racks.sh --yes      # all four already looped
+/root/terratec/scripts/phase88-midi-racks.sh --list     # socket + card map
+/root/terratec/scripts/phase88-midi-racks.sh --probe 0  # every send/listen combo on card 0
+/root/terratec/scripts/phase88-midi-racks.sh --identify 0   # 440 Hz on its out 1/2
 ```
 
-After a reboot (or `rmmod snd_ice1712 && modprobe snd_ice1712`) `amidi -l`
-then lists four ports on a two-card box - `hw:0,0 hw:0,1 hw:1,0 hw:1,1`.
-Whether the extra DIN connector on the rack is wired to that second UART is a
-hardware question the table below answers.  If it is not wired, delete
-`/etc/modprobe.d/phase88.conf` again: an unconnected input on a shared
-interrupt line is only noise.
+`--identify` is how you find out which rack is which card: it plays a tone on
+that card's outputs 1 and 2, so the rack whose meters move is the one.  The
+numbering defaults to rack 1 = the clock **slave**, rack 2 = the clock
+**master** (`PHASE88_RACK1` / `PHASE88_RACK2` in `/etc/default/phase88`).
+A summary of a walk looks like this (one cable, left in rack #1 rear):
 
-What is proven: the rawmidi devices open, a `SysEx` payload written with
-`amidi -s` is accepted by the driver (no error, correct byte count), the
-sequencer shows `TerraTec Phase88 MIDI` on both cards (clients 16 and 20).
+```
+PASS    rack #1 MIDI 2 (rear)  hw:0,1
+FAIL    rack #1 MIDI 1 (front)  hw:0,0     <- expected: no cable there
+```
 
-What is **not** proven without a cable: that the DIN connectors are wired to
-those UARTs.  The driver happily accepts writes into an unconnected port.  To
-test, loop a cable and run:
+**Stop JACK before testing.**  `jackd` with a MIDI backend keeps the rawmidi
+devices open, so `amidi` and the test scripts fail with `Device or resource
+busy` while it runs - that is not a hardware fault::
 
-It sends a byte-exact `SysEx` frame three times and compares what came back,
-and it warns when jackd or PipeWire hold the port (exclusive use gives `EBUSY`,
-which is not a hardware fault).  JACK is not needed for ALSA MIDI apps
-(`aconnect`, `aplaymidi`, `arecordmidi`, hydrogen, ...).
+  cannot open port "hw:0,1": Device or resource busy
 
-### the test matrix
+For a single socket, `phase88-midi-test.sh hw:0,1` sends a byte-exact `SysEx`
+frame three times and compares what came back; `--watch hw:0,0 20` just listens
+(for "did my keyboard send anything"), and `--cross hw:0,0 hw:1,0` tests one
+cable between two racks.  All of them warn when jackd or PipeWire hold the
+port, because exclusive use gives `EBUSY` and that is not a hardware fault.
+Nothing here needs JACK - `aconnect`, `aplaymidi`, `arecordmidi` and ALSA-only
+apps work directly.
 
-One cable is enough for all of it, as long as you move it.  `hw:X,0` is the
-UART Linux registers by default, `hw:X,1` the one that appears with
-`mpu401_2=1`:
-
-| # | cable | command | what a PASS proves |
-|---|-------|---------|--------------------|
-| 1 | rack A `OUT` -> rack A `IN` | `phase88-midi-test.sh hw:0,0` | the DIN pair of that rack is wired, port 1 works |
-| 2 | same cable, unchanged | `phase88-midi-test.sh hw:0,0 hw:0,1` | the rack's `IN` is really UART 2 (so the two DINs are swapped vs Linux) |
-| 3 | same cable, unchanged | `phase88-midi-test.sh hw:0,1 hw:0,0` | the rack's `OUT` is really UART 2 |
-| 4 | same cable, unchanged | `phase88-midi-test.sh hw:0,1` | both connectors are on UART 2, port 1 is dead |
-| 5 | rack A `OUT` -> rack B `IN` | `phase88-midi-test.sh --cross hw:0,0 hw:1,0` | the two racks talk to each other |
-| 6 | keyboard/synth -> any rack `IN` | `phase88-midi-test.sh --watch hw:0,0 15` | "does Linux see my keyboard", and on which port |
-
-Run 1 is the one that matters: if it passes, MIDI works and the rest is only
-about which of the two UARTs each socket uses.  A `NO DATA RECEIVED` after run
-1 with a known-good cable means that DIN is not wired to the Envy24 at all -
-the driver side is already proven by the fact that `amidi` reports no error
-while sending.
-
-For JACK MIDI (Reaper, ...), jackd needs a MIDI backend, which it does not
+For JACK MIDI (Reaper, ...), jackd needs a MIDI backend, which it does **not**
 enable by default:
 
 ```
@@ -378,8 +391,8 @@ jackd -d alsa -d phase88x2 -r 48000 -p 1024 -X raw     # one per raw ALSA MIDI d
 ```
 
 In QJackCtl that is the "Enable ALSA MIDI" option (it maps to `-X seq`).  With
-`-X seq` you get one `system:Midi` port per card, with `-X raw` two per card
-once `mpu401_2=1` is set.  `aconnect -l` shows what the sequencer sees.
+`-X seq` you get one `system:Midi` port per card; with `-X raw` you get two per
+card, matching the two sockets.  `aconnect -l` shows what the sequencer sees.
 
 ## 9. Troubleshooting
 
@@ -424,7 +437,14 @@ silence it; not applied because that is the user's card-reader slot.
   measurable audio effect, including as candidates for a 'sync out enable'.
 * Sample-accurate offset between the two cards has never been measured (needs
   one patch cable for a click test).
-* Second MIDI port (see above).
-* Nothing is submitted upstream yet: the 5-commit series plus
+* Both MIDI sockets work, but they carry the **same** name (`TerraTec Phase88
+  MIDI` in `amidi -l`, and both cards are `TerraTec-Phase88:midi/*` under JACK),
+  so only the port number tells front from rear.  Terratec's Windows driver
+  calls them "PHASE88 MIDI Port 1/2"; giving the second UART a distinct name
+  needs a `mpu401_2_name` the PHASE 88 has no `ice1712_card_info` entry for, so
+  it is a slightly bigger change than the quirk itself.
+* The rear socket of the **second** rack has not been tested yet - the driver
+  path is identical, but hardware is only proven where a cable was moved.
+* Nothing is submitted upstream yet: the 6-commit series plus
   `/root/terratec/analysis/README.md` are kept submission-ready (checkpatch
   clean) and the RFC debug commit stays out.

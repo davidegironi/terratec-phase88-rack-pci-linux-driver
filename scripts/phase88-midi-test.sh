@@ -133,15 +133,32 @@ device_of() {
 	esac
 }
 
+SEEN=""
 for p in "$A_OUT" "$A_IN"; do
 	num=$(card_of "$p")
 	[ -z "$num" ] && { echo "  (cannot map $p to a card number, continuing)"; continue; }
 	dev="/dev/snd/midiC${num}D$(device_of "$p")"
+	case " $SEEN " in *" $dev "*) continue ;; esac   # loopback: same device twice
+	SEEN="$SEEN $dev"
 	if command -v fuser >/dev/null 2>&1 && [ -e "$dev" ]; then
 		holders=$(fuser "$dev" 2>/dev/null || true)
-		[ -n "$holders" ] && echo "  NOTE: $dev is held by:$holders  (stop jackd/PipeWire if the test fails)"
+		[ -n "$holders" ] && echo "  NOTE: $dev is held by: $holders"
 	fi
 done
+
+# A rawmidi device allows one client: jackd (-X seq or -X raw) and Reaper's own
+# ALSA MIDI backend keep it open, and the resulting EBUSY looks like broken
+# hardware if it is not called out.
+report_busy() {
+	cat <<EOF
+RESULT: PORT BUSY - something else owns the raw MIDI device.
+  jackd with a MIDI backend (-X seq or -X raw) and Reaper's own ALSA MIDI
+  backend keep /dev/snd/midiCxDy open, and a rawmidi device allows only one
+  client at a time.  Stop JACK (QJackCtl 'Stop') or Reaper, run this again,
+  and check the JACK path separately if you need it with JACK running.
+EOF
+	exit 3
+}
 
 GOT=$(mktemp /tmp/p88-midi-got-XXXX.syx)
 trap 'rm -f "$PAYLOAD" "$GOT"' EXIT
@@ -157,6 +174,7 @@ REPEAT=3
 i=1
 while [ $i -le $REPEAT ]; do
 	if ! timeout 10 amidi -p "$A_OUT" -s "$PAYLOAD" 2>/tmp/p88-midi-tx.err; then
+		grep -qi busy /tmp/p88-midi-tx.err && report_busy
 		echo "  FAIL: amidi could not send on $A_OUT: $(cat /tmp/p88-midi-tx.err)"
 		kill $RX 2>/dev/null
 		exit 1
@@ -170,6 +188,9 @@ RC=$?
 
 RXB=$(wc -c < "$GOT")
 TXB=$(wc -c < "$PAYLOAD")
+if grep -qi busy /tmp/p88-midi-rx.log 2>/dev/null; then
+	report_busy
+fi
 echo "  received $RXB bytes on $A_IN (amidi exit $RC)"
 echo -n "  sent     : "; od -An -tx1 "$PAYLOAD" | tr -s ' '
 if [ "$RXB" -gt 0 ]; then
@@ -183,8 +204,10 @@ RESULT: NO DATA RECEIVED.
   The driver accepted every write, so the software side is fine.  Either
     * no cable: this test needs MIDI OUT of the source looped to MIDI IN of the
       same (loopback) or the other (cross) rack, or
-    * the port you picked is not the one the cable is in - the PHASE 88 has
-      MIDI on the rack, and Windows showed two ports where Linux shows one,
+    * the cable is in the other socket: hw:<card>,0 is the rack's FRONT MIDI,
+      hw:<card>,1 the REAR one, and both carry the same name in amidi -l, so
+      the number is all that tells them apart.  Try the other number, or run
+      'phase88-midi-racks.sh --probe <card>' which tries every combination,
       or
     * the DIN wiring is the odd 'all poles swapped' kind (rare on Terratec).
   'amidi exit 0' here means its -t idle timeout expired with an empty buffer;

@@ -1,0 +1,63 @@
+From b854c1887292fcf6ab0279abb1cfe07ca6a5079e Mon Sep 17 00:00:00 2001
+From: root <root@debian.lab.local>
+Date: Mon, 19 Oct 2026 15:34:56 +0200
+Subject: [PATCH 6/6] ASoC: ice1712: claim the second MIDI port of the PHASE 88
+
+The PHASE 88 rack has two MIDI interfaces, one on the front panel and one on
+the rear, but its EEPROM advertises a single UART, so the driver registers
+one rawmidi device and the rear connector stays dead:
+
+  $ amidi -l
+  IO  hw:0,0    TerraTec Phase88 MIDI
+
+Terratec's own driver exposes both - "[PHASE88.Interface.Midi1]" and
+"[PHASE88.Interface.Midi2]" in ews88wdm.inf, "PHASE88 MIDI Port 1/2", whose
+changelog line for the second one reads "17-Sep-02 (Cl) - Mic28 Extensions
+(Midi 2)".  Both UARTs live inside the Envy24 (MMIO 0x0c/0x0d and
+0x1c/0x1d), so nothing is missing except the bit the EEPROM should have
+carried; set ICE1712_CFG_2xMPU401 in the same place the board's other
+EEPROM errors are corrected.
+
+Verified on a PHASE 88 rack: with a loopback cable in the rear connector a
+SysEx frame written to the second UART came back on it byte-exactly (three
+frames, no byte differences), and the first UART - the front connector,
+which worked before - still works.  With both ports registered and idle the
+card raised no interrupt on its IRQ line for 10 s, so an unconnected input
+does not put traffic on the shared interrupt line.
+---
+ sound/pci/ice1712/ice1712.c | 19 +++++++++++++++++++
+ 1 file changed, 19 insertions(+)
+
+diff --git a/sound/pci/ice1712/ice1712.c b/sound/pci/ice1712/ice1712.c
+index 18e4f43a4..528c4938f 100644
+--- a/sound/pci/ice1712/ice1712.c
++++ b/sound/pci/ice1712/ice1712.c
+@@ -2312,6 +2312,25 @@ static int snd_ice1712_chip_init(struct snd_ice1712 *ice)
+ 		 * codec behind them.
+ 		 */
+ 		ice->eeprom.data[ICE_EEP1_CODEC] |= ICE1712_CFG_NO_CON_AC97;
++		/*
++		 * The rack has two MIDI interfaces - one on the front panel, one
++		 * on the rear - but the EEPROM advertises only one UART, so
++		 * without this the rear connector stays dead.  Terratec's own
++		 * driver exposes both: "[PHASE88.Interface.Midi1]" and
++		 * "[PHASE88.Interface.Midi2]" in ews88wdm.inf, "PHASE88 MIDI Port
++		 * 1/2", the changelog naming the second one "Mic28 Extensions
++		 * (Midi 2)".  Both UARTs are inside the Envy24, so claiming the
++		 * second one is only a matter of setting the bit the EEPROM
++		 * should have carried.
++		 *
++		 * Verified on a PHASE 88 rack: with a loopback cable in the rear
++		 * connector, a SysEx frame written to the second UART came back
++		 * on it byte-exactly, and the first UART (front connector) kept
++		 * working as before.  With the second UART enabled and both ports
++		 * idle the card raised no interrupt on its IRQ line for 10 s,
++		 * so an unconnected input does not generate traffic.
++		 */
++		ice->eeprom.data[ICE_EEP1_CODEC] |= ICE1712_CFG_2xMPU401;
+ 	}
+ 	pci_write_config_byte(ice->pci, 0x60, ice->eeprom.data[ICE_EEP1_CODEC]);
+ 	pci_write_config_byte(ice->pci, 0x61, ice->eeprom.data[ICE_EEP1_ACLINK]);
+-- 
+2.47.3
+

@@ -1,7 +1,7 @@
 From ad0f14e94f2c5f901d76611f81283f9274613773 Mon Sep 17 00:00:00 2001
 From: root <root@debian.lab.local>
 Date: Tue, 13 Oct 2026 17:16:26 +0200
-Subject: [PATCH 1/5] ASoC: ice1712: fix PHASE 88 chip select expander address
+Subject: [PATCH 1/6] ASoC: ice1712: fix PHASE 88 chip select expander address
 
 The TerraTec PHASE 88 (subvendor 0x3b155111) is described as an EWS88MT
 variant, so the driver creates the pair of PCF8574 expanders of that

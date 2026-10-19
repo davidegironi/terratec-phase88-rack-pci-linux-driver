@@ -1,4 +1,4 @@
-From c021a09f3a34b4209a923c4284746ab14b72b0e0 Mon Sep 17 00:00:00 2001
+From d2db56036cac10d6215d9b0789ba420cc6b79e5d Mon Sep 17 00:00:00 2001
 From: root <root@debian.lab.local>
 Date: Fri, 16 Oct 2026 10:11:12 +0200
 Subject: [PATCH] RFC/DO-NOT-SUBMIT: ASoC: ice1712: bring-up controls for the

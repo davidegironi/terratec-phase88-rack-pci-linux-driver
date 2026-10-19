@@ -1,7 +1,7 @@
 From eb908938648b77d59bce886750b0f5d991e2733e Mon Sep 17 00:00:00 2001
 From: root <root@debian.lab.local>
 Date: Fri, 16 Oct 2026 09:28:04 +0200
-Subject: [PATCH 4/5] ASoC: ice1712: initialise the second PHASE 88 expander
+Subject: [PATCH 4/6] ASoC: ice1712: initialise the second PHASE 88 expander
  register
 
 The PHASE 88 addresses its chip select expander at the 8-bit address 0x42
