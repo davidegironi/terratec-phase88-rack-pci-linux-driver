@@ -144,18 +144,27 @@ for r in 1 2; do
 			echo "    (${port}: MIDI OUT straight back into MIDI IN, same rack)"
 			printf ">>> press ENTER to test it, or 's' + ENTER to skip: "
 			read -r ans
-			[ "$ans" = "s" ] && { RESULTS="$RESULTS\nSKIP    $name"; continue; }
+			[ "$ans" = "s" ] && { RESULTS="$RESULTS\nSKIP    $name"; echo "--- $name: SKIP"; echo; continue; }
 		fi
-		out=$(timeout 60 $TEST "$port" 2>&1)
-		if echo "$out" | grep -q "MIDI WORKS"; then
+		out=$(timeout 60 $TEST "$port" 2>&1); rc=$?
+		# Verdict per socket.  Report the verdict of THIS socket, not something
+		# scraped back out of $RESULTS (which is one long \n-escaped string, so a
+		# 'tail -1' there used to print the FIRST socket's verdict every time).
+		if [ "$rc" = 3 ] || echo "$out" | grep -q "PORT BUSY"; then
+			verdict="BUSY"
+			RESULTS="$RESULTS\nBUSY    $name  $port  (jackd/Reaper holds the port - stop it)"
+		elif echo "$out" | grep -q "MIDI WORKS"; then
+			verdict="PASS"
 			RESULTS="$RESULTS\nPASS    $name  $port"
 		elif echo "$out" | grep -q "NO DATA RECEIVED"; then
+			verdict="FAIL"
 			RESULTS="$RESULTS\nFAIL    $name  $port"
 		else
-			RESULTS="$RESULTS\n?       $name  $port"
+			verdict="UNKNOWN"
+			RESULTS="$RESULTS\nUNKNOWN $name  $port"
 			echo "$out" | tail -4 | sed 's/^/    /'
 		fi
-		echo "--- $name: $(echo "$RESULTS" | tail -1 | awk '{print $1}')"
+		echo "--- $name ($port): $verdict"
 		echo
 	done
 done

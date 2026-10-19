@@ -1,0 +1,42 @@
+# TerraTec PHASE 88 on Linux
+
+The PHASE 88 (`1412:1712`, subsystem `153b:1151`) does not work with a stock
+Linux driver: it probes, fails with `AK4524 chip select failed, check cable to
+the front module` and disappears.  This folder holds the whole job: the driver
+fix, the evidence for it, the userspace policy, the test tools and the vendor
+drivers that were reverse-engineered to get there.
+
+**Start here:** [`install/PHASE88-GUIDE.md`](install/PHASE88-GUIDE.md) - quick
+start, what the patch fixes, one card versus two, JACK/Reaper setup, MIDI,
+troubleshooting.
+
+## Folder map
+
+| path | what it is |
+|---|---|
+| `install/` | **everything needed to put this on a machine**: the guide, the three `/etc` files, prebuilt modules, the stock-kernel recipe. Read `install/README.md`. |
+| `scripts/` | every test and setup tool (`phase88-verify.sh`, `phase88-mixer.sh`, `phase88-sync-setup.sh`, `phase88-midi-racks.sh`, ...). Path `scripts/` is referenced by the systemd unit - do not rename. |
+| `kernel/linux-6.18.55/` | the kernel tree where the driver was fixed. Branch `phase88`, baseline `941c14e58`, 6 submission commits + 1 RFC. This is 25 G and is not in this repo. |
+| `analysis/` | the investigation log (`README.md`, dated entries), the disassembly (`ews32.dis`, `text.dis`, `mac.dis`), the generated patches (`series/0001..0006`, `phase88-fix.patch`), and `baseline/` (the original failure capture). |
+| `driver/` | the vendor drivers used as the reference: `win/` (Windows 5.51b + control panel) and `os/` (Mac OS 9). `driver/README.md` says which file proved what. Binaries not in this repo (9 M), the notes are. |
+| `scripts/README.md` | every tool in one table, with which ones need JACK stopped and which need the RFC debug module. |
+| `logs/` | run logs from the scripts (verify, cycle, postboot, clock sweeps). Referenced by the scripts - do not rename. |
+| `phase88_driver_agent_handoff.md` | the original brief, kept as-is. |
+
+## State of this machine
+
+Two PHASE 88 racks, both on the patched module, clock-locked through the sync
+cable, 16 analog in and 16 out under one JACK server:
+
+```sh
+grep ICE1712 /proc/asound/cards                  # card 0 = slave, card 1 = master
+scripts/phase88-sync-setup.sh --show             # clock roles straight from the registers
+scripts/phase88-midi-racks.sh --list             # the four MIDI sockets
+jackd -d alsa -d phase88x2 -r 48000 -p 1024      # 16 in / 16 out
+```
+
+## Submission state
+
+Six clean, checkpatch-clean commits are ready (`analysis/series/`), and one
+RFC commit with the bring-up debug controls stays out of the series.  Nothing
+has been sent to alsa-devel/kernel-dev yet - see the guide, section 10.

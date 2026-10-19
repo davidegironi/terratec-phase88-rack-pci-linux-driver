@@ -69,7 +69,8 @@ exported headers and no Kbuild plumbing, so the module can be rebuilt
 out-of-tree against the `linux-headers` package of whatever kernel you boot and
 dropped into `/lib/modules/$(uname -r)/updates/`, where depmod prefers it over
 the distro copy.  Full details, and the run that proves it, are in
-`/root/terratec/docs/debian-stock-kernel.md`.  The short version, measured here
+`/root/terratec/install/debian-stock-kernel.md` (the file next to this guide).  The
+short version, measured here
 on 2026-10-18 against Debian's stock `6.12.111+deb13-amd64`:
 
 ```
@@ -334,7 +335,7 @@ place as the other EEPROM corrections (commit "ASoC: ice1712: claim the second
 MIDI port of the PHASE 88", `series/0006-*.patch`) is all it took.  Terratec's
 Windows driver has always exposed both: `[PHASE88.Interface.Midi1]` and
 `[PHASE88.Interface.Midi2]`, "PHASE88 MIDI Port 1/2" in
-`driver/windows2000_vista_xp/ews88wdm.inf`, whose changelog calls the second
+`driver/win/ews88wdm.inf`, whose changelog calls the second
 one `17-Sep-02 (Cl) - Mic28 Extensions (Midi 2)`.
 
 Measured, not assumed: with a loopback cable in the **rear** socket of rack #1,

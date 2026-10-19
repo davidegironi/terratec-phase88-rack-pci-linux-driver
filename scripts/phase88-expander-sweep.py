@@ -6,7 +6,7 @@ the debug build of ews.c as "Phase88 Debug Expander Page 1/3") and records a
 short sample after every value, so the meaning of the unknown bits can be
 found with a signal connected to the inputs.
 
-    usage: phase88-expander-sweep.sh [--page 1|3] [values...]
+    usage: phase88-expander-sweep.py [--page 1|3] [values...]
 
 Without values it sweeps 0..255 of page 3 (the register the Terratec Windows
 driver clears at init), then the flag nibble of page 1.

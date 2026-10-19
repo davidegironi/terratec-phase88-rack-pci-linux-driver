@@ -5,7 +5,7 @@
 # PHASE 88 is 0x0f, so ICE1712_CFG_2xMPU401 (0x20) is clear and only
 # /dev/snd/midiCxD0 is created).  The Terratec Windows driver installs two,
 # "PHASE88 MIDI Port 1" and "PHASE88 MIDI Port 2" (see
-# driver/windows2000_vista_xp/ews88wdm.inf, [PHASE88.Interface.Midi1/2]; its
+# driver/win/ews88wdm.inf, [PHASE88.Interface.Midi1/2]; its
 # history says "17-Sep-02 - Mic28 Extensions (Midi 2)").  Whether the second
 # UART is wired to a connector on your rack is a hardware question: look at the
 # rack, if it has two MIDI INs tell me and it is a one-line quirk to enable the

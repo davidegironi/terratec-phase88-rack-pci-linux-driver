@@ -2,21 +2,21 @@
 # phase88-install-policy.sh - put this machine's PHASE 88 userspace policy on
 # another box (or restore it after a reinstall).
 #
-# It installs the three files kept under /root/terratec/etc/ and, if you point
+# It installs the three files kept under /root/terratec/install/etc/ and, if you point
 # it at a built snd-ice1712.ko, the module itself:
 #
 #   phase88-install-policy.sh                        policy only
 #   phase88-install-policy.sh path/to/snd-ice1712.ko  policy + module
 #
 # What the policy is, and why each bit is needed, is in
-# /root/terratec/PHASE88-GUIDE.md ("Do I need a custom asound.conf?", "Do I
+# /root/terratec/install/PHASE88-GUIDE.md ("Do I need a custom asound.conf?", "Do I
 # need a custom service?").  Nothing here starts or stops audio; run it with
 # JACK stopped and it will not touch a running card.
 
 set -eu
 
 HERE=$(dirname "$(readlink -f "$0")")
-SRC=$(dirname "$HERE")/etc
+SRC=$(dirname "$HERE")/install/etc
 KO=${1:-}
 
 [ -d "$SRC" ] || { echo "no policy directory at $SRC" >&2; exit 1; }

@@ -1,8 +1,10 @@
 # big, third-party or regenerated material - not part of the work product
 /kernel/
-/driver/
-/baseline/
-/build-oot/
+# driver/ is vendor binaries (9 M) - only its provenance notes are tracked, so
+# the pattern must not exclude the directory itself
+/driver/*
+!/driver/README.md
+/analysis/baseline/
 /logs/
 # scratch symlinks into logs/
 follow-*

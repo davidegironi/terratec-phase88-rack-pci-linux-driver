@@ -22,7 +22,10 @@ stock `snd-ice1712.ko.xz` is the *unpatched* driver).
 | compiler | Debian's kernel says `CONFIG_CC_VERSION_TEXT="x86_64-linux-gnu-gcc-14 (Debian 14.2.0-19) 14.2.0"`; our `gcc` is exactly 14.2.0, so no compiler mismatch |
 
 Everything below is what actually ran (as root).  The build products are in
-`/root/terratec/build-oot/`; nothing of this touched the live sound setup.
+`/root/terratec/build-oot/`; nothing of this touched the live sound setup.  That
+1.7 G build tree was deleted on 2026-10-19 after the run; the products of the
+proof (`modinfo` output, the trimmed Makefile, and the `.ko` files compressed)
+are in `/root/terratec/install/modules/`.
 
 ## 1. Get headers and source
 
@@ -183,7 +186,7 @@ rather build the fix in than sign a module.  In Debian that path is
   wedges the machine.
 * The driver patch is what makes the card exist at all; the *usability* part is
   userspace (unmute, front mic input, clock slave for a second card).  See
-  `/root/terratec/PHASE88-GUIDE.md`: "Do I need a custom service?", "Is any of this
+  `/root/terratec/install/PHASE88-GUIDE.md`: "Do I need a custom service?", "Is any of this
   different with one card versus two?" and "Two-card clocking".
 * Verified working on 6.18.55 (built from source, two cards, JACK) — and *built
   but not booted* on Debian stock `6.12.111+deb13-amd64`, because this machine

@@ -1,0 +1,31 @@
+proof that the PHASE 88 patch builds against the STOCK Debian kernel
+built 2026-10-19T21:21:51+02:00 against /lib/modules/6.12.111+deb13-amd64/build (linux-headers-6.12.111+deb13-amd64)
+source: /usr/src/linux-source-6.12.tar.xz + analysis/phase88-fix.patch (applied clean)
+
+### modinfo snd-ice1712.ko
+filename:       /root/terratec/build-oot/ice1712-oot/snd-ice1712.ko
+license:        GPL
+description:    ICEnsemble ICE1712 (Envy24)
+author:         Jaroslav Kysela <perex@perex.cz>
+alias:          pci:v00001412d00001712sv*sd*bc*sc*i*
+depends:        snd,snd-i2c,snd-ice17xx-ak4xxx,snd-mpu401-uart,snd-pcm,snd-ak4xxx-adda,snd-ac97-codec,snd-cs8427
+name:           snd_ice1712
+retpoline:      Y
+vermagic:       6.12.111+deb13-amd64 SMP preempt mod_unload modversions 
+parm:           index:Index value for ICE1712 soundcard. (array of int)
+parm:           id:ID string for ICE1712 soundcard. (array of charp)
+parm:           enable:Enable ICE1712 soundcard. (array of bool)
+parm:           omni:Enable Midiman M-Audio Delta Omni I/O support. (array of bool)
+parm:           cs8427_timeout:Define reset timeout for cs8427 chip in msec resolution. (array of int)
+parm:           model:Use the given board model. (array of charp)
+parm:           dxr_enable:Enable DXR support for Terratec DMX6FIRE. (array of int)
+
+### modinfo snd-ice17xx-ak4xxx.ko
+filename:       /root/terratec/build-oot/ice1712-oot/snd-ice17xx-ak4xxx.ko
+license:        GPL
+description:    ICEnsemble ICE17xx <-> AK4xxx AD/DA chip interface
+author:         Jaroslav Kysela <perex@perex.cz>
+depends:        snd-ak4xxx-adda
+name:           snd_ice17xx_ak4xxx
+retpoline:      Y
+vermagic:       6.12.111+deb13-amd64 SMP preempt mod_unload modversions 

@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: GPL-2.0
+#
+# Out-of-tree build of the PHASE 88 driver for a stock Debian kernel.
+# Trimmed from the in-tree sound/pci/ice1712/Makefile: only the ICE1712
+# modules, nothing else, and obj-m instead of obj-$(CONFIG_...).
+
+snd-ice17xx-ak4xxx-y := ak4xxx.o
+snd-ice1712-y := ice1712.o delta.o hoontech.o ews.o
+
+obj-m += snd-ice1712.o snd-ice17xx-ak4xxx.o

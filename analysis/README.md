@@ -281,7 +281,7 @@ So the PHASE 88 has a mic preamp / line-mic select per input pair (input pair
    chip-select expander at 7-bit 0x21 (bit 0x10 = "flag185" in the WDM
    disassembly is not yet attributed; 0x20 is what the driver keeps asserted)
    or free ICE1712 GPIO bits. Route: trace the Windows ControlPanel
-   (`driver/EWS88_D_MT_App_Drv_2000_Vista_XP_5.51b/.../ControlPanel 5.51b.exe`)
+   (`driver/win/EWS88-ControlPanel-5.51b.exe`, path as of the 2026-10-19 cleanup)
    ioctl -> `ews88wdm.sys` handler already disassembled in `analysis/ews32.dis`.
 2. implement it as real ALSA controls in `ews.c` (e.g. an enumerated
    "Input Source Select" per pair, or "Line/Mic n Switch"), *not* as a separate
@@ -481,7 +481,7 @@ no value changes any other channel (ch8 wanders -45..-57, source-side).  So only
 bit 0x10 is in play and bits 0x01/0x02/0x04/0x08/0x20/0x40/0x80 are not audio-path
 selects we can see from here.
 
-### Windows driver strings (`strings -el driver/windows2000_vista_xp/ews88wdm.sys`)
+### Windows driver strings (`strings -el driver/win/ews88wdm.sys`; was `driver/windows2000_vista_xp/` before the 2026-10-19 cleanup)
 ```
 MIC28   EWS HD Config\MIC28   Mic28ClkSource   Mic InputSel
 Codec input level   Codec input switches
@@ -860,12 +860,13 @@ would do it.  Not done: the user may want that reader slot.
 
 Written for the user's "how do I actually use this" question:
 
-* `/root/terratec/PHASE88-GUIDE.md` - quick start, what the patch fixes, the
-  asound.conf question, the service question, one card versus two, the clocking
-  evidence, JACK/Reaper settings, MIDI, troubleshooting table, known gaps.
-* `/root/terratec/docs/debian-stock-kernel.md` - the out-of-tree build recipe.
-* `/root/terratec/etc/` - the three system files this machine uses, so a fresh
-  box can be rebuilt from the repo.
+* `/root/terratec/install/PHASE88-GUIDE.md` - quick start, what the patch fixes,
+  the asound.conf question, the service question, one card versus two, the
+  clocking evidence, JACK/Reaper settings, MIDI, troubleshooting table, known
+  gaps.  (Moved out of the repo root on 2026-10-19.)
+* `/root/terratec/install/debian-stock-kernel.md` - the out-of-tree build recipe.
+* `/root/terratec/install/etc/` - the three system files this machine uses, so a
+  fresh box can be rebuilt from the repo.
 * `scripts/phase88-install-policy.sh` - installs them (and optionally the
   module), rewriting the unit's mixer path to wherever the repo lives.
 * `scripts/phase88-midi-test.sh` - MIDI loopback / cross-card tester.
@@ -1094,3 +1095,73 @@ to the hardware ports.
 Machine left: jackd stopped, no stale `/dev/shm/jack_*`, card 0 = clock slave
 (item 13), card 1 = master (item 9), both cards unmuted with the front input on,
 four MIDI ports each, both git trees clean.
+
+## 2026-10-19 (evening): the verdict bug, and the folder sorted out
+
+User said (m01259): *"1) the phase88-midi-racks.sh output show FAIL on single
+test and then PASS on summary, maybe a typo error on single test? 2) this folder
+contains subfolder analysis, baseline, build-oot, docs, driver, kernel, logs,
+scripts, and the phase88_driver_agent_handoff.md, We can cleanup the things no
+more needed. ... and build a folder named install where to put the install files
+(i suppose the one in etc), and the documents needed, so the GUIDE you have
+created. In other word, let's sort it out"*
+
+### the per-socket verdict was wrong (script bug, not hardware)
+
+`RESULTS="$RESULTS\nPASS    ..."` builds **one** string holding literal `\n`
+escapes, so `echo "$RESULTS" | tail -1` returned the whole accumulated string
+and `awk '{print $1}'` printed the **first** socket's verdict on every line -
+socket 1 said FAIL, so every later socket echoed FAIL while the summary
+(`printf "%b"`, which does expand the escapes) was right.
+
+Fix: compute a `verdict` variable per socket, print that, and record it; added a
+`BUSY` verdict for test exit 3.  Measured again with the cable in rack #1 rear:
+`FAIL / PASS / FAIL / FAIL` inline, identical to the summary.
+
+### new layout
+
+| moved | to |
+|---|---|
+| `etc/` | `install/etc/` (mirrors `/etc`, so the copy targets are obvious) |
+| `PHASE88-GUIDE.md`, `docs/debian-stock-kernel.md` | `install/` (all docs for a new box in one place) |
+| `baseline/` | `analysis/baseline/` (it is evidence, not a top-level thing) |
+| `driver/windows2000_vista_xp/` | `driver/win/` |
+| `driver/os9/` + the loose `.pax` | `driver/os/` |
+| new | `README.md` (folder map), `install/README.md` (install steps), `driver/README.md` (which vendor file proved what), `scripts/README.md` (tool table) |
+
+`scripts/`, `logs/` and `kernel/` stayed put on purpose: the systemd unit
+execs `scripts/phase88-mixer.sh` and the scripts write into `logs/`.
+
+### deleted
+
+* `build-oot/` (1.7 G) - the extracted Debian source tree, reproducible with
+  `apt + tar`. Its proof survives as `install/modules/MODINFO-stock-debian-6.12.111.txt`,
+  the trimmed `Makefile.oot-example` and the three `.ko` files, xz'd (740 K).
+* `driver/os9_decompiled/` (7.5 M) - a Ghidra project built from the kext; the
+  kext binary itself is kept (`md5 d3cecb1fbf18756bb57d754832a66d71`, recorded
+  in `driver/README.md`), so it can be regenerated.
+* `V549Remove.exe` (a Windows uninstaller) and the empty `Driver 5.51b` folder.
+* `scripts/test-phase88.sh` - a 20-line `lspci`/`lsmod` dump from day one,
+  superseded by `phase88-verify.sh`; the original captures are in
+  `analysis/baseline/`.
+* `scripts/phase88-expander-sweep.sh` was a **python** file with a `.sh` name
+  (`bash -n`: `syntax error near unexpected token '('` at line 25
+  `def sh(cmd):`) - renamed to `.py`.
+
+### a landmine the cleanup surfaced
+
+`etc/modprobe.d/phase88.conf` was still in the repo containing
+`options snd_ice1712 mpu401_2=1`, even though that parameter was replaced by
+the permanent quirk in `b854c1887`.  Restoring the snapshot on a machine would
+have made modprobe fail on an unknown parameter and the card would not load at
+all.  The live file was correctly absent (`modprobe --show-depends snd_ice1712`
+ends in a clean `insmod .../updates/snd-ice1712.ko`); the snapshot is deleted.
+
+### re-verified after the move
+
+`bash -n` on every shell script and `ast.parse` on the python one;
+`phase88-install-policy.sh` re-run from `install/etc` (idempotent, unit
+regenerated with the right mixer path, cards 0 1 detected);
+`phase88-mixer.sh` (both cards unmuted + `word clock set (slave card 0)`);
+`phase88-sync-setup.sh --show` (card 0 = 13 IEC958 Input, card 1 = 9 = 48000);
+`amidi -l` (four ports); `phase88-midi-racks.sh --yes` (verdicts now match).
