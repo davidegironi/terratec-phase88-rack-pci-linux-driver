@@ -63,13 +63,36 @@ label_of() { # <item> - the enum item is not the register value: 8 = 44100,
 		*)  echo "own oscillator" ;;
 	esac
 }
+# the human-readable label of the rate a card is set to, e.g. '48000'
+rate_label_of() {
+	local it; it=$(name_of $1)
+	timeout 10 amixer -c "$1" cget name="$CLK" 2>/dev/null |
+		sed -n "s/.*Item #$it '\([^']*\)'.*/\1/p"
+}
+
 show_state() {
-	local c it
+	local c it slaves="" other
 	for c in $cards; do
 		it=$(name_of $c)
 		printf "card %s (%s): 'Multi Track Internal Clock' = %s (%s)\n" \
 			$c "$(cat /proc/asound/card$c/id)" "$it" "$(label_of $it)"
+		[ "$it" = "$ITEM_IEC958" ] && slaves="$slaves $c"
 	done
+	# A card on an external clock is also rate-locked: the driver clamps
+	# rate_min = rate_max in snd_ice1712_playback_pro_open() while
+	# is_pro_rate_locked() is true (ice1712.c:1122), so a slave accepts ONLY the
+	# rate the master sends.  Say so, because jackd failing at 96 kHz on a card
+	# that happily did 96 kHz yesterday looks like a broken driver.
+	if [ -n "$slaves" ]; then
+		for c in $cards; do
+			case " $slaves " in *" $c "*) continue ;; esac
+			echo "note: card(s)$slaves are SLAVES - they accept only the master's rate,"
+			echo "      which card $c is sending ($(rate_label_of $c)).  To record at 96 kHz,"
+			echo "      set the MASTER's 'Multi Track Internal Clock' to 96000 first, then"
+			echo "      start JACK at 96000; a slave asked for another rate will not open."
+			break
+		done
+	fi
 }
 streaming() { # <card> -> 0 if a pcm stream of that card is RUNNING
 	local f

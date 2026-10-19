@@ -17,6 +17,7 @@ exec > >(tee "$LOG") 2>&1
 T() { timeout -s KILL "${TMO:-15}" "$@"; }
 ok()   { echo "  [ok]   $*"; }
 bad()  { echo "  [FAIL] $*"; FAILED=$((FAILED+1)); }
+skip() { echo "  [skip] $*"; }
 FAILED=0
 
 echo "### PHASE 88 verification $(date)"
@@ -91,6 +92,19 @@ T cat "/proc/asound/card$CARD/ak4524" 2>/dev/null | head -20 | sed 's/^/        
 
 # ---------------------------------------------------------- playback
 PCMC="hw:$CARD,0"
+# A card clocked from outside is rate-locked: when is_pro_rate_locked() is true,
+# snd_ice1712_playback_pro_open() clamps rate_min = rate_max = PRO_RATE_DEFAULT
+# (ice1712.c:1122, and the capture twin at :1143).  So on a clock SLAVE only the
+# master's rate exists and the other two are legitimately 'not available' -
+# reporting that as a failure would be wrong.
+CLK=$(T amixer -c "$CARD" cget name='Multi Track Internal Clock' 2>/dev/null | sed -n 's/^ *: values=\([0-9]*\).*/\1/p')
+LOCKED=0
+if [ "$CLK" = 13 ]; then
+	LOCKED=1
+	ok "clock: 'Multi Track Internal Clock' = 13 (IEC958 Input) - card $CARD is a clock SLAVE, only the master's sample rate will be available"
+else
+	ok "clock: 'Multi Track Internal Clock' = ${CLK:-unknown} - card $CARD uses its own oscillator, all rates should be available"
+fi
 for rate in 44100 48000 96000; do
 	echo "--- playback $rate Hz, 10 ch S32_LE ---"
 	( T speaker-test -D "$PCMC" -c 10 -r "$rate" --format S32_LE -t sinc -l 0 -p 21000 >/tmp/phase88-play.log 2>&1 & )
@@ -104,6 +118,8 @@ for rate in 44100 48000 96000; do
 	sleep 0.5
 	if [ "$st" = "RUNNING" ] && [ "${p2:-0}" -gt "${p1:-0}" ] 2>/dev/null; then
 		ok "playback RUNNING @ $rate, DMA advanced ${p1}->${p2} ($hw)"
+	elif [ "$LOCKED" = 1 ] && grep -Eq "not available for (playback|capture)" /tmp/phase88-play.log; then
+		skip "$rate Hz refused while clock-locked to the master - expected on a slave, not a fault (see ice1712.c:1122)"
 	else
 		bad "playback state '$st', hw_ptr ${p1}->${p2} @ $rate"
 		sed 's/^/           /' /tmp/phase88-play.log

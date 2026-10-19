@@ -1165,3 +1165,44 @@ regenerated with the right mixer path, cards 0 1 detected);
 `phase88-mixer.sh` (both cards unmuted + `word clock set (slave card 0)`);
 `phase88-sync-setup.sh --show` (card 0 = 13 IEC958 Input, card 1 = 9 = 48000);
 `amidi -l` (four ports); `phase88-midi-racks.sh --yes` (verdicts now match).
+
+### the clock lock also decides the sample rate (found by the verify run)
+
+The post-cleanup `phase88-verify.sh` run failed two checks on card 0 -
+`Rate 44100Hz not available for playback` and the same for 96000 - although the
+same script had passed all three rates a day earlier.  Not a regression: card 0
+had become the clock **slave** when the second card arrived, and while
+`is_pro_rate_locked()` is true (`is_spdif_master() || PRO_RATE_LOCKED`,
+`ice1712.c:112-114`) the driver clamps `rate_min = rate_max = PRO_RATE_DEFAULT`
+in `snd_ice1712_playback_pro_open()` (`ice1712.c:1122`) and its capture twin at
+`:1143`.  A locked card exposes exactly one rate.
+
+Proved by moving the master instead of the card under test:
+
+| master (card 1) clock | slave (card 0) @48000 | slave @96000 |
+|---|---|---|
+| item 9 = 48000 | works | refused |
+| item 12 = 96000 | refused (arecord relaxed it to 96000, 4608000 bytes) | works: 1 s x 96000 x 12 ch x 4 B = 4608000 bytes |
+| back to item 9 | works (2304000 bytes) | refused |
+
+Practical rule for the user: to run the pair at 96 kHz, set the **master**'s
+`Multi Track Internal Clock` to 96000 first (JACK stopped), then start JACK at
+96000.  A slave asked for a rate the master is not sending will not open.
+
+Two tool consequences:
+
+* alsa-utils 1.2.14 `arecord`/`aplay` **relax the rate silently and exit 0**:
+  `Warning: rate is not accurate (requested = 96000Hz, got = 48000Hz)` /
+  `please, try the plug plugin`.  There is no `-e`/`--nofallback` in this build,
+  so the real rate must be read from `/proc/asound/cardN/pcm0[pc]/sub0/hw_params`
+  (which `phase88-verify.sh` already prints in its `[ok]` line).
+* `phase88-verify.sh` now reads the clock item first and prints
+  `[skip] 96000 Hz refused while clock-locked to the master - expected on a
+  slave, not a fault`, instead of a FAIL, plus a `clock:` line naming the role.
+  Measured after the change: card 0 (slave) = `all checks passed` with two
+  skips; card 1 (master, own oscillator) = all three rates RUNNING.  Parsing
+  detail: the value line from `amixer cget` is `  : values=13` **with leading
+  spaces**, so the sed needs `s/^ *: values=\([0-9]*\).*/\1/p`.
+* `phase88-sync-setup.sh --show` gained the same note, printing the master's
+  current rate via a new `rate_label_of()` helper (it greps the `Item #N 'x'`
+  lines of the control).

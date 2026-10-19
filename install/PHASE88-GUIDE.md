@@ -244,6 +244,28 @@ Two facts that cost hours:
   run `phase88-sync-setup.sh --off` (or clear `PHASE88_SYNC_SLAVE`) — otherwise
   everything looks alive while the sample clock is a lie.
 
+### the lock also decides the sample rate
+
+While a card is clocked from outside, the driver clamps `rate_min = rate_max` in
+`snd_ice1712_playback_pro_open()` / `..._capture_pro_open()` (ice1712.c:1122 and
+:1143, condition `is_pro_rate_locked()`), so **the slave accepts only the rate
+the master is sending**.  Measured by moving the master:
+
+| master `Multi Track Internal Clock` | slave asks 48000 | slave asks 96000 |
+|---|---|---|
+| item 9 = 48000 | works | refused |
+| item 12 = 96000 | refused | works (1 s of 12ch S32_LE = 4608000 bytes) |
+| back to item 9 | works | refused |
+
+So to record the pair at 96 kHz: stop JACK, set the **master** to 96000
+(`amixer -c <master> cset name='Multi Track Internal Clock' 12`), then start JACK
+at 96000.  A slave asked for a rate the master is not sending simply will not
+open, which is why `phase88-sync-setup.sh --show` now prints the master's rate
+next to the roles.  Note that `aplay`/`arecord` (alsa-utils 1.2.14) do **not**
+fail on this - they quietly relax the rate and exit 0 with
+`Warning: rate is not accurate (requested = 96000Hz, got = 48000Hz)`; read the
+actual `rate:` back from `/proc/asound/cardN/pcm0[pc]/sub0/hw_params`.
+
 ## 7. JACK, QJackCtl and Reaper
 
 QJackCtl settings for two cards:
@@ -405,6 +427,7 @@ card, matching the two sockets.  `aconnect -l` shows what the sequencer sees.
 | xrun counter runs away, CPU high, audio still fine | a **dead client** still registered (any tool that exits without `jack_client_close()`).  One of my test clients did this 12103 times at 35 % CPU.  Restart the server; the hardware has nothing to do with it |
 | `Failed to connect to session bus for device reservation ... Audio device hw:... cannot be acquired` | jackd started from systemd/ssh with no dbus session.  `export JACK_NO_AUDIO_RESERVATION=1` (QJackCtl on the desktop is unaffected) |
 | clock change had no effect | a stream was running (`snd_ice1712_set_pro_rate()` returns early while playback/capture is active).  Stop JACK first; `phase88-sync-setup.sh` refuses loudly for exactly this reason |
+| 44.1k or 96k refused on one card, or JACK will not start at 96 kHz with two cards, yet the same card did all rates yesterday | that card is the clock **slave**: locked to the master it accepts one rate only (ice1712.c:1122).  Set the master's rate first, then match JACK to it (`phase88-sync-setup.sh --show` prints both) |
 | card alive but everything 0.69x too slow | it is on `IEC958 Input` with no clock present: cable unplugged or master not driving SYNC OUT |
 | a client stuck in `D` state, module will not unload | usually an oops taken while holding the sound core `register_mutex`.  Never `rmmod -f` here (it can block inside `snd_card_free()`); reboot is the only clean exit.  All test scripts therefore wrap ALSA calls in `timeout` |
 | capture is exact zeros on all 8 inputs | the page `0x03` bug, i.e. an unpatched or older module |
