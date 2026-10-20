@@ -1,0 +1,21 @@
+ASoC: ice1712: add the PHASE 88 Line/Mic input switch
+
+The mixer of the original Terratec drivers offers a "Line/Mic" switch
+that engages the input preamplifier a microphone needs.  Without it a
+microphone stays about 30 dB below the level the Windows mixer delivers,
+so the pair it is connected to looks nearly dead.
+
+The setting is bit 4 of the second expander register that the previous
+commit initialises.  With a microphone on input 7 that pair measures
+-74 dBFS with the bit clear and about -34 dBFS with it set: +40.8 dB on
+channel 7 and +30.3 dB on channel 8, while every other channel stays
+within a dB of the same level either way.  The other bits of the
+register (0x01, 0x02, 0x04, 0x08, alone or combined with 0x10) change
+nothing measurable, and the Terratec drivers keep a single boolean for
+this board, so only this switch is exposed.  The register is write-only,
+so the value is composed from the shadow copy that the chip select code
+maintains.
+
+The switch is created for the PHASE 88 only.  The EWS88MT and the EWS88D
+keep their "Input Sensitivity" switches, which are driven by a PCF8575
+that these boards carry and the PHASE 88 does not.

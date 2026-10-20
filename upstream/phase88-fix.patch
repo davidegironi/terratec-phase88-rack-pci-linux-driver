@@ -1,5 +1,5 @@
 diff --git a/sound/pci/ice1712/ews.c b/sound/pci/ice1712/ews.c
-index 1dffcb011..07664277f 100644
+index 1dffcb011..ac36370aa 100644
 --- a/sound/pci/ice1712/ews.c
 +++ b/sound/pci/ice1712/ews.c
 @@ -32,6 +32,8 @@ enum {
@@ -11,7 +11,7 @@ index 1dffcb011..07664277f 100644
  };
  
  /*
-@@ -128,12 +130,156 @@ static struct snd_i2c_bit_ops snd_ice1712_ewx_cs8427_bit_ops = {
+@@ -128,12 +130,130 @@ static struct snd_i2c_bit_ops snd_ice1712_ewx_cs8427_bit_ops = {
   * AK4524 access
   */
  
@@ -121,39 +121,13 @@ index 1dffcb011..07664277f 100644
 +	return 1;
 +}
 +
-+static const struct snd_kcontrol_new snd_ice1712_phase88_linemic_ctls[] = {
-+	{
-+		.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
-+		.name = "Line/Mic 1/2 Switch",
-+		.info = snd_ice1712_phase88_linemic_info,
-+		.get = snd_ice1712_phase88_linemic_get,
-+		.put = snd_ice1712_phase88_linemic_put,
-+		.private_value = 0,
-+	},
-+	{
-+		.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
-+		.name = "Line/Mic 3/4 Switch",
-+		.info = snd_ice1712_phase88_linemic_info,
-+		.get = snd_ice1712_phase88_linemic_get,
-+		.put = snd_ice1712_phase88_linemic_put,
-+		.private_value = 1,
-+	},
-+	{
-+		.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
-+		.name = "Line/Mic 5/6 Switch",
-+		.info = snd_ice1712_phase88_linemic_info,
-+		.get = snd_ice1712_phase88_linemic_get,
-+		.put = snd_ice1712_phase88_linemic_put,
-+		.private_value = 2,
-+	},
-+	{
-+		.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
-+		.name = "Line/Mic 7/8 Switch",
-+		.info = snd_ice1712_phase88_linemic_info,
-+		.get = snd_ice1712_phase88_linemic_get,
-+		.put = snd_ice1712_phase88_linemic_put,
-+		.private_value = 3,
-+	},
++static const struct snd_kcontrol_new snd_ice1712_phase88_linemic_ctl = {
++	.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
++	.name = "Line/Mic 7/8 Switch",
++	.info = snd_ice1712_phase88_linemic_info,
++	.get = snd_ice1712_phase88_linemic_get,
++	.put = snd_ice1712_phase88_linemic_put,
++	.private_value = 3,		/* bit 0x10: the pair nothing else drives */
 +};
 +
  /* AK4524 chip select; address 0x48 bit 0-3 */
@@ -168,7 +142,7 @@ index 1dffcb011..07664277f 100644
  	if (snd_BUG_ON(chip_mask < 0 || chip_mask > 0x0f))
  		return -EINVAL;
  	snd_i2c_lock(ice->i2c);
-@@ -458,9 +604,37 @@ static int snd_ice1712_ews_init(struct snd_ice1712 *ice)
+@@ -458,9 +578,37 @@ static int snd_ice1712_ews_init(struct snd_ice1712 *ice)
  		}
  		snd_ice1712_6fire_write_pca(ice, PCF9554_REG_CONFIG, 0x80);
  		break;
@@ -207,7 +181,7 @@ index 1dffcb011..07664277f 100644
  	case ICE1712_SUBDEVICE_TS88:
  
  		err = snd_i2c_device_create(ice->i2c, "CS8404",
-@@ -982,9 +1156,23 @@ static int snd_ice1712_ews_add_controls(struct snd_ice1712 *ice)
+@@ -982,9 +1130,20 @@ static int snd_ice1712_ews_add_controls(struct snd_ice1712 *ice)
  				return err;
  		}
  		break;
@@ -218,13 +192,10 @@ index 1dffcb011..07664277f 100644
 +		 * corresponding switches must not be created here; instead
 +		 * the Line/Mic select of the codec pairs is offered.
 +		 */
-+		for (idx = 0; idx < ARRAY_SIZE(snd_ice1712_phase88_linemic_ctls); idx++) {
-+			err = snd_ctl_add(ice->card,
-+					snd_ctl_new1(&snd_ice1712_phase88_linemic_ctls[idx],
-+						   ice));
-+			if (err < 0)
-+				return err;
-+		}
++		err = snd_ctl_add(ice->card,
++				  snd_ctl_new1(&snd_ice1712_phase88_linemic_ctl, ice));
++		if (err < 0)
++			return err;
 +		break;
  	case ICE1712_SUBDEVICE_EWS88MT:
  	case ICE1712_SUBDEVICE_EWS88MT_NEW:

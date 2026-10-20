@@ -1206,3 +1206,141 @@ Two tool consequences:
 * `phase88-sync-setup.sh --show` gained the same note, printing the master's
   current rate via a new `rate_label_of()` helper (it greps the `Item #N 'x'`
   lines of the control).
+
+## 2026-10-20: the submission package, and the patch nobody can defend
+
+Two things happened: the MIDI fault in rack #2 got a hardware verdict (next
+section), and the patch series got audited line by line before anyone sees it.
+
+### patch 0005 was claiming more than the measurements support
+
+`f15b12d5a` ("add the PHASE 88 Line/Mic input switches") registers **four**
+controls and its message says the other three bits "could not be measured ... so
+they are assumed to keep the same order".  That assumption is now known to be
+wrong in the only way that matters: sweeping page `0x03` through `0x11 0x12 0x14
+0x18 0x30 0x50 0x90` produced nothing beyond bit `0x10`, and the Windows
+disassembly treats **one** boolean (`[dev+0x185]`, `ews32.dis:12807` and `:14036`,
+always compared as a boolean).  Shipping three dead knobs invites a NAK, so the
+collapse was built as a **branch**, not a rewrite of history:
+
+* branch `phase88-alt-single` (from `phase88`, safety copy at `phase88-backup-1618`):
+  one `Line/Mic 7/8 Switch`, `.private_value = 3` = bit `0x80>>3 = 0x10`, the
+  measured bit.  Control count per card 84 (80 base + 1 + 3 RFC debug) instead
+  of 87.
+* built, installed (`md5 6cf98eec49b71cde32eb186754cb0e20`, now also in
+  `/lib/modules/6.18.55/updates/snd-ice1712.ko`) and **verified**: `phase88-verify.sh`
+  passes on both cards, and the switch provably writes the right bit - the
+  page-`0x03` shadow reads `0x00` off / `0x10` on, on both cards.
+* `scripts/phase88-mixer.sh` needed no change: it guards with `has_ctl`, so the
+  same script works against the old four-switch module and the new one.
+
+Getting the module reloaded is not trivial on this box: `wireplumber` (user
+`lightdm`, uid 106) holds `controlC0/C1/C2` and `pipewire` holds `/dev/snd/seq`,
+so the module sits at refcount 2.  The clean way (no killing):
+
+```sh
+sudo -u lightdm XDG_RUNTIME_DIR=/run/user/106 \
+     DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/106/bus \
+     systemctl --user stop pipewire.socket pipewire.service wireplumber.service
+rmmod snd_ice1712 && modprobe snd_ice1712
+# ... same command with 'start' afterwards to give the desktop its audio back
+```
+
+Stop the **socket** too or systemd re-launches pipewire and re-grabs the device.
+
+### commit messages: what checkpatch actually complained about
+
+`checkpatch.pl --strict` on the series flagged, in the *messages* (not the
+code): a 76-78 char body line in several patches, and in 0004 an
+`ERROR: Please use git commit description style 'commit <12+ chars of sha1>
+("...")'` because the body cited `Commit ad0f14e94 (...)` with 8 hex chars.
+Two decisions there:
+
+* do **not** cite a hash of a sibling patch in the same series - it changes on
+  every rebase.  Refer to it by subject: `The previous commit, "ASoC: ice1712:
+  fix PHASE 88 chip select expander address", started writing the first
+  register`.
+* the quoted dmesg line in 0001 is 86 chars and is **kept verbatim** (a log line
+  is evidence; paraphrasing it in a commit message is worse than a long line) -
+  hung over two lines with the `    the front module` continuation.
+
+Rewriting them the mechanical way produced garbage (dropped indents,
+one-word orphan lines), so the four messages were hand-written into
+`/root/terratec/upstream/msg/*.txt` and applied with a `GIT_SEQUENCE_EDITOR`
+helper (`upstream/msg/seqedit.py`) that appends
+`exec git commit --amend -F <file>` after the matching `pick` line.  Final
+hashes on `phase88-alt-single`: `a850b2460` chip select, `0ca487765` AC'97
+guard, `e45d4efa2` no consumer AC'97, `be5a2e0fe` second register, `86adec099`
+Line/Mic switch, `b76e07070` second MIDI port, `2e145dfc9` RFC (never sent).
+After that, every patch is clean except the deliberate `Missing Signed-off-by`
+(the user's own DCO step, not mine to fake), the `(0x42>>1)` spacing CHECK in
+`ews.h` (matches the neighbouring EWS macros) and `Avoid CamelCase:
+ICE1712_CFG_2xMPU401` (a macro that already existed).
+
+Two patch-0005 `CHECK: Alignment should match open parenthesis` were real code
+style and got fixed in the code: with one control the array
+`snd_ice1712_phase88_linemic_ctls[]` and its `for` loop became a single object
+`snd_ice1712_phase88_linemic_ctl` and a single `snd_ctl_add()` - which also
+removed the `idx` loop variable.
+
+Package layout is now `/root/terratec/upstream/` (both variants + `CHANGED-FILES.md`
++ `HOWTO-send-the-patches.md` + `cover-letter.txt`); recipients come from this
+tree's `MAINTAINERS` SOUND section: `linux-sound@vger.kernel.org`,
+`Jaroslav Kysela <perex@perex.cz>`, `Takashi Iwai <tiwai@suse.com>` -
+`alsa-devel` is only the patchwork queue name now.  Nothing has been sent.
+
+## 2026-10-20: rack #2 front MIDI delivers garbage, and it is not the driver
+
+User report: the same cable works in every socket except **rack #2 MIDI 1
+(front)** (`hw:1,0`), where the payload comes back mangled -
+`0f 74 90 3d 10`, `complete payload frames found: 0`.  Their reasoning ("can't
+be the cable, it is the same cable") is right, and the alternative is hardware
+rather than software.  Characterised it properly.
+
+Tools built for this: `scripts/phase88-midi-diag.py` (patterns `00`, `ff`,
+`sparse`, `fiftysix`, `aaaaaa`, `asc`, `slow`, `burst`; positional XOR diff,
+per-bit histogram, byte-count delta; `--tx=`/`--rx=` to point two cards at each
+other) and `scripts/phase88-midi-clocktest.sh` (sweeps everything the driver can
+reach while measuring).
+
+Mean bit-error rate over 3 runs, loopback on `hw:1,0`:
+
+| pattern | error rate | note |
+|---|---|---|
+| `ff` (64 x 0xFF) | **0.0 %** (61/61 bytes all exactly 0xFF) | line-high state is clean |
+| `00` (64 x 0x00) | **68.2 %** (sd 1.5) | line-low state is broken |
+| `fiftysix` | 56.2 % (was 37.8 % and 43.2 % earlier) | the fault also **drifts** with time |
+| `sparse` | 41.7 % | |
+| `slow` (isolated bytes 30 ms apart) | 46.9 % | not a FIFO/throughput problem |
+
+The raw dump of a held `0x00` stream is the fingerprint: 64 of 64 bytes arrive
+(byte count and framing perfect) but only 18 of them are `0x00`; the rest carry
+**one stray bit** (`0x80` x9, `0x04` x8, `0x10` x7, `0x08` x7, `0x20` x5 ...),
+mean 0.80 spurious ones per byte.  In MIDI a `0` bit is *current on* through the
+optocoupler LED: a receiver that mis-reads only during the current-on period is
+seeing marginal current, not a wrong clock.
+
+Ruled out, each by measurement: sample clock (every rate item flat, 35.9-48.4 %
+with no trend), every expander bit (page 1 and page 3 values flat), CPU/IRQ load
+(baseline vs `--load` identical, and an overrun would lose **whole bytes**,
+which never happens), baud-rate error (that would damage `0xFF` as much as
+`0x00` and tilt to the high bit positions), and a floating input (0 bytes
+arrive with no cable).  The same two UARTs are byte-exact on rack #1 with the
+same cable, so it is local to that socket's path: DIN contacts, its line driver
+or optocoupler, or a joint/connector on the front panel board.
+
+Verdict: **hardware**, most likely a dirty/loose DIN contact or a cold joint in
+the front-panel socket of rack #2.  Tests for the user, in order of effort:
+
+```sh
+# 1. wiggle: run this and move the plug. rate jumping around = mechanical
+python3 scripts/phase88-midi-diag.py hw:1,0 --pattern 00 --repeat 40
+# 2. new cable / clean the contacts, then re-run the same command
+# 3. reseat the internal front-panel connector, rack powered off
+# 4. which side is guilty (needs one cable between the two racks):
+python3 scripts/phase88-midi-diag.py hw:1,0 --tx=hw:0,1 --pattern 00 --repeat 3   # RX test
+python3 scripts/phase88-midi-diag.py hw:1,0 --rx=hw:0,1 --pattern 00 --repeat 3   # TX test
+```
+
+If RX is bad and TX clean, the socket's input side (optocoupler/contacts) is
+itself the fault; if TX is bad too, it is the shared line driver on that board.

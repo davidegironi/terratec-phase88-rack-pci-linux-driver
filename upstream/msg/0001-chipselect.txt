@@ -1,0 +1,37 @@
+ASoC: ice1712: fix PHASE 88 chip select expander address
+
+The TerraTec PHASE 88 (subvendor 0x3b155111) is described as an EWS88MT
+variant, so the driver creates the pair of PCF8574 expanders of that
+board at 7-bit 0x23/0x24 and probes the front module by reading the
+output expander at 0x24.  On the PHASE 88 that read NACKs and the probe
+fails with the front module reported unreachable:
+
+  snd_ice1712 0000:03:02.0: AK4524 chip select failed, check cable to
+    the front module
+  snd_ice1712 0000:03:02.0: probe with driver snd_ice1712 failed with
+    error -5
+
+A read-only survey of the I2C bus (START + address + STOP, the same
+sequence the Terratec Windows driver uses for board detection) shows
+that the PHASE 88 answers on 7-bit 0x20 (CS8404) and 7-bit 0x21 only;
+0x23 and 0x24 do not exist on this board.
+
+The Windows driver (ews88wdm.sys) agrees: it detects the board by
+probing 8-bit 0x44, 0x48 and 0x42 and for a PHASE 88 (subsystem 0x1151
+and 0xf151) it expects the "type 8" result, whose chip select routine
+writes two bytes to 8-bit 0x42: a page byte 0x01 followed by a data
+byte that holds the active-low AK4524 chip selects in bits 0-3 and the
+board flags in bits 4-7, with flag 0x20 permanently asserted.  That
+expander is write-only for the driver - the flag byte is always composed
+from driver state, never read back over I2C - so keep a shadow copy of
+it here as well.
+
+Add snd_ice1712_phase88_chip_select() doing that two byte write,
+dispatch to it from snd_ice1712_ews88mt_chip_select() for the PHASE 88,
+create only the CS8404 and the chip select expander for this subvendor,
+and drop the "Input/Output Sensitivity Switch" controls which are wired
+to the missing 0x23/0x24 expanders (the Windows driver no-ops the input
+sensitivity for type 8 boards, too).
+
+With this the PHASE 88 probes and enumerates as "TerraTec Phase88" and
+the multi-track PCM reaches RUNNING.

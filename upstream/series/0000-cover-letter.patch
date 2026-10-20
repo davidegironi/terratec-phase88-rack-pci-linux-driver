@@ -1,0 +1,23 @@
+From b854c1887292fcf6ab0279abb1cfe07ca6a5079e Mon Sep 17 00:00:00 2001
+From: root <root@debian.lab.local>
+Date: Tue, 20 Oct 2026 14:44:57 +0200
+Subject: [PATCH 0/6] *** SUBJECT HERE ***
+
+*** BLURB HERE ***
+
+root (6):
+  ASoC: ice1712: fix PHASE 88 chip select expander address
+  ASoC: ice1712: guard consumer capture against a missing AC'97 codec
+  ASoC: ice1712: PHASE 88 has no consumer AC'97 codec
+  ASoC: ice1712: initialise the second PHASE 88 expander register
+  ASoC: ice1712: add the PHASE 88 Line/Mic input switches
+  ASoC: ice1712: claim the second MIDI port of the PHASE 88
+
+ sound/pci/ice1712/ews.c     | 192 +++++++++++++++++++++++++++++++++++-
+ sound/pci/ice1712/ews.h     |  26 +++++
+ sound/pci/ice1712/ice1712.c |  38 ++++++-
+ 3 files changed, 253 insertions(+), 3 deletions(-)
+
+-- 
+2.47.3
+

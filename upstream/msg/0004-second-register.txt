@@ -1,0 +1,18 @@
+ASoC: ice1712: initialise the second PHASE 88 expander register
+
+The PHASE 88 addresses its chip select expander at the 8-bit address
+0x42 with a register byte followed by a data byte.  The previous commit,
+"ASoC: ice1712: fix PHASE 88 chip select expander address", started
+writing the first register, which carries the chip select of the four
+AK4524 codecs, and playback worked from then on.
+
+The Terratec drivers write a second register while they initialise a
+"type 8" board - {0x03, 0x00} to 0x42 - and never touch it again.  The
+latch of the expander is undefined after power on, and while it holds an
+unknown value the AK4524 keep their serial output drivers disabled: on
+such a board all eight analog capture channels read exact zeros even
+though the codecs are programmed, running and unmuted.
+
+Initialise the register the same way, before the codecs are set up, and
+keep a shadow copy of it because the expander never returns what was
+written to it.

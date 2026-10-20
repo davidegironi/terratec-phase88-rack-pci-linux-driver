@@ -1,0 +1,146 @@
+From be5a2e0fecbd91c1d5a8e003adb3db861dc89a5c Mon Sep 17 00:00:00 2001
+From: root <root@debian.lab.local>
+Date: Fri, 16 Oct 2026 09:28:04 +0200
+Subject: [PATCH 4/6] ASoC: ice1712: initialise the second PHASE 88 expander
+ register
+
+The PHASE 88 addresses its chip select expander at the 8-bit address
+0x42 with a register byte followed by a data byte.  The previous commit,
+"ASoC: ice1712: fix PHASE 88 chip select expander address", started
+writing the first register, which carries the chip select of the four
+AK4524 codecs, and playback worked from then on.
+
+The Terratec drivers write a second register while they initialise a
+"type 8" board - {0x03, 0x00} to 0x42 - and never touch it again.  The
+latch of the expander is undefined after power on, and while it holds an
+unknown value the AK4524 keep their serial output drivers disabled: on
+such a board all eight analog capture channels read exact zeros even
+though the codecs are programmed, running and unmuted.
+
+Initialise the register the same way, before the codecs are set up, and
+keep a shadow copy of it because the expander never returns what was
+written to it.
+---
+ sound/pci/ice1712/ews.c | 53 +++++++++++++++++++++++++++++++++--------
+ sound/pci/ice1712/ews.h | 10 ++++++++
+ 2 files changed, 53 insertions(+), 10 deletions(-)
+
+diff --git a/sound/pci/ice1712/ews.c b/sound/pci/ice1712/ews.c
+index 74eda4999..7878d5ef3 100644
+--- a/sound/pci/ice1712/ews.c
++++ b/sound/pci/ice1712/ews.c
+@@ -32,7 +32,8 @@ enum {
+ /* additional i2c devices for EWS boards */
+ struct ews_spec {
+ 	struct snd_i2c_device *i2cdevs[3];
+-	unsigned char pcf8575_data;	/* PHASE 88: shadow of the expander flags */
++	unsigned char pcf8575_data;	/* PHASE 88: shadow of the chip select byte */
++	unsigned char pcf8575_input;	/* PHASE 88: shadow of the input select byte */
+ };
+ 
+ /*
+@@ -137,29 +138,49 @@ static struct snd_i2c_bit_ops snd_ice1712_ewx_cs8427_bit_ops = {
+  * driver, which composes the byte from its own state.  Therefore keep a
+  * shadow copy of the flag bits and always write the complete value.
+  */
+-static int snd_ice1712_phase88_chip_select(struct snd_ice1712 *ice, int chip_mask)
++/*
++ * Write one register of the PHASE 88 expander.
++ *
++ * The bit-banged bus of the EWS boards takes the GPIO lock on its own, so
++ * the caller must not hold ice->gpio_mutex - it is not a recursive mutex
++ * and the writer would deadlock itself inside ewx_i2c_start().
++ */
++static int snd_ice1712_phase88_write(struct snd_ice1712 *ice,
++				     unsigned char page, unsigned char value)
+ {
+ 	struct ews_spec *spec = ice->spec;
+ 	unsigned char bytes[2];
+ 	int err;
+ 
+-	if (snd_BUG_ON(chip_mask < 0 || chip_mask > 0x0f))
+-		return -EINVAL;
+-	bytes[0] = ICE1712_PHASE88_OUTPUT_PAGE;
+-	bytes[1] = (spec->pcf8575_data & 0xf0) | chip_mask;
++	bytes[0] = page;
++	bytes[1] = value;
+ 	snd_i2c_lock(ice->i2c);
+ 	err = snd_i2c_sendbytes(spec->i2cdevs[EWS_I2C_PCF2], bytes, 2);
+ 	snd_i2c_unlock(ice->i2c);
+ 	if (err != 2) {
+ 		dev_err(ice->card->dev,
+-			"AK4524 chip select failed (addr 0x%02x, err %d)\n",
+-			spec->i2cdevs[EWS_I2C_PCF2]->addr, err);
++			"PHASE 88 expander write failed (page 0x%02x, addr 0x%02x, err %d)\n",
++			page, spec->i2cdevs[EWS_I2C_PCF2]->addr, err);
+ 		return -EIO;
+ 	}
+-	spec->pcf8575_data = bytes[1];
+ 	return 0;
+ }
+ 
++static int snd_ice1712_phase88_chip_select(struct snd_ice1712 *ice, int chip_mask)
++{
++	struct ews_spec *spec = ice->spec;
++	int err;
++
++	if (snd_BUG_ON(chip_mask < 0 || chip_mask > 0x0f))
++		return -EINVAL;
++	spec->pcf8575_data = (spec->pcf8575_data & 0xf0) | chip_mask;
++	err = snd_ice1712_phase88_write(ice, ICE1712_PHASE88_OUTPUT_PAGE,
++					spec->pcf8575_data);
++	if (err < 0)
++		spec->pcf8575_data ^= chip_mask;
++	return err;
++}
++
+ /* AK4524 chip select; address 0x48 bit 0-3 */
+ static int snd_ice1712_ews88mt_chip_select(struct snd_ice1712 *ice, int chip_mask)
+ {
+@@ -504,9 +525,21 @@ static int snd_ice1712_ews_init(struct snd_ice1712 *ice)
+ 					    &spec->i2cdevs[EWS_I2C_PCF2]);
+ 		if (err < 0)
+ 			return err;
+-		spec->pcf8575_data = ICE1712_PHASE88_OUTPUT_INIT;
++	spec->pcf8575_data = ICE1712_PHASE88_OUTPUT_INIT;
+ 		/* Check if the chip select expander is present */
+ 		err = snd_ice1712_ews88mt_chip_select(ice, 0x0f);
++		if (err < 0)
++			return err;
++		/*
++		 * The latch of the second expander register is undefined
++		 * after power on; the Terratec driver clears it while it
++		 * initialises a "type 8" board, before the codecs are set up.
++		 * With the latch in an unknown state all four AK4524 keep
++		 * their transmit drivers disabled and nothing is captured.
++		 */
++		spec->pcf8575_input = ICE1712_PHASE88_INPUT_INIT;
++		err = snd_ice1712_phase88_write(ice, ICE1712_PHASE88_INPUT_PAGE,
++						spec->pcf8575_input);
+ 		if (err < 0)
+ 			return err;
+ 		break;
+diff --git a/sound/pci/ice1712/ews.h b/sound/pci/ice1712/ews.h
+index c047b8d25..f0cd01bad 100644
+--- a/sound/pci/ice1712/ews.h
++++ b/sound/pci/ice1712/ews.h
+@@ -73,6 +73,16 @@ extern struct snd_ice1712_card_info snd_ice1712_ews_cards[];
+ #define ICE1712_PHASE88_OUTPUT_PAGE	0x01	/* first byte of the transfer */
+ #define ICE1712_PHASE88_OUTPUT_INIT	0x20	/* flags kept asserted (bits 4-7) */
+ 
++/*
++ * The same expander has a second register that the Terratec drivers clear
++ * once while they initialise a "type 8" board ({0x03, 0x00} written to
++ * 8-bit 0x42).  The latch of the expander is undefined after power on and
++ * the AK4524 codecs stay silent when it is left alone, so it has to be
++ * written before the codecs are set up.
++ */
++#define ICE1712_PHASE88_INPUT_PAGE	0x03
++#define ICE1712_PHASE88_INPUT_INIT	0x00
++
+ /* TerraTec DMX 6Fire configuration definitions */
+ #define ICE1712_6FIRE_AK4524_CS_MASK	0x07	/* AK4524 chip select #1-#3 */
+ #define ICE1712_6FIRE_RW		0x08	/* read/write switch for i2c; high = write  */
+-- 
+2.47.3
+

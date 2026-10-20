@@ -1,0 +1,81 @@
+Subject suggestion (replace the *** SUBJECT HERE *** line of 0000-cover-letter.patch):
+
+    [PATCH 0/6] ASoC: ice1712: make the TerraTec PHASE 88 work
+
+Body (paste under *** BLURB HERE ***):
+
+The TerraTec PHASE 88 (PCI 1412:1712, subsystem 153b:1151, subvendor
+0x3b155111) does not come up at all:
+
+    snd_ice1712 0000:03:02.0: AK4524 chip select failed, check cable to the front module
+    snd_ice1712 0000:03:02.0: probe with driver snd_ice1712 failed with error -5
+
+It is described as an EWS88MT variant, but the front module is not wired the
+EWS88MT way, its EEPROM announces an AC-97 codec the board does not carry, and
+the EEPROM's MIDI bit is wrong too.  Six small changes, in the order in which
+each one became visible while bringing the board up:
+
+  1  ice1712: fix PHASE 88 chip select expander address
+     The board has one write-only expander at 8-bit 0x42, addressed as {reg,
+     data}, not the PCF8574 pair at 0x23/0x24.  Probe it, and select the four
+     AK4524 through it, keeping a shadow copy because the device never reads
+     back.  Playback works after this patch.
+  2  ice1712: guard consumer capture against a missing AC'97 codec
+     Not PHASE 88 specific: snd_ice1712_ac97_mixer() leaves ice->ac97 NULL and
+     only warns, while the consumer capture ops dereference it.  Opening such a
+     stream oopses.  Return -ENODEV.
+  3  ice1712: PHASE 88 has no consumer AC'97 codec
+     CODEC byte 0x0f announces a consumer codec; the AC-Link answers 0xffff for
+     every register even after a cold reset.  Set ICE1712_CFG_NO_CON_AC97 the
+     way the DMX 6Fire does, so the AC-Link stays in reset and no codec-less
+     PCM devices are created.
+  4  ice1712: initialise the second PHASE 88 expander register
+     The Terratec drivers also write {0x03, 0x00} to 0x42 at init.  The latch is
+     undefined after power-on, and while it is undefined the AK4524 keep their
+     serial output drivers disabled: all eight analog capture channels read
+     exact zeros although the codecs are programmed, running and unmuted.
+  5  ice1712: add the PHASE 88 Line/Mic input switches
+     That same second register carries the input preamp select a microphone
+     needs; measured +40.8 dB on channel 7 and +30.3 dB on channel 8 with the
+     same microphone.
+  6  ice1712: claim the second MIDI port of the PHASE 88
+     The rack has a front and a rear MIDI socket, both on the Envy24's two
+     MPU-401 UARTs, but the EEPROM advertises one.  Terratec's Windows driver
+     exposes both; set ICE1712_CFG_2xMPU401.
+
+Tested on two PHASE 88 racks, 2.6 GHz class x86_64 host, kernel 6.18.55 (and
+built against Debian's stock 6.12.111 with no other change):
+
+  * probe clean, one "ICE1712 multi" device (10 out / 12 in), 80 mixer controls,
+    no AC-97 timeouts;
+  * playback at 44100/48000/96000 Hz and capture at 48000 Hz reach RUNNING, DMA
+    advances, no xruns; all four AK4524 respond and keep their register values;
+  * all eight analog inputs produce signal (channels 1..8 of the 12-channel
+    capture device), including the front microphone pair with the new switch;
+  * two cards under one JACK server (alsa-lib `multi` over
+    /dev/snd/controlC0+1...): 16 in / 16 out, full duplex on both, 0 xruns, and
+    with the sync cable the slave follows the master's clock (moving the master
+    by 8 % moves the slave by 8 %: -81292 ppm against -81295 ppm), so the two
+    racks sample coherently;
+  * both MIDI sockets pass a SysEx loopback (byte-exact, three frames), the rear
+    one only after patch 6.
+
+Questions for the maintainers, since I am happy to redo this your way:
+
+  * Is a `ice->eeprom.data[ICE_EEP1_*] |= ...` fixup inside
+    snd_ice1712_get_eeprom() the right place for the PHASE 88's three wrong
+    EEPROM bits, or would you rather see the board split out of the EWS88MT
+    case into its own card type in ews.c?
+  * Patch 5: I could measure only bit 0x10 of the second expander register - the
+    one that raises the last input pair - and the Windows driver appears to keep
+    exactly one boolean for this board.  The patch registers just that switch;
+    if you would rather see an enumerated "Input Source" control or a different
+    name, say which.
+  * Patch 2 looks like a general fix rather than a quirk; I'd like it considered
+    for -stable, but there is no commit I can point at with `Fixes:`.
+
+all six patches are also useful individually: 1, 3 and 4 are what make the card
+exist, 2 is an oops fix, 5 and 6 are usability.
+
+thanks,
+<your name>

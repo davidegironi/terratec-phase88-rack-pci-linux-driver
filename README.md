@@ -17,7 +17,8 @@ troubleshooting.
 | `install/` | **everything needed to put this on a machine**: the guide, the three `/etc` files, prebuilt modules, the stock-kernel recipe. Read `install/README.md`. |
 | `scripts/` | every test and setup tool (`phase88-verify.sh`, `phase88-mixer.sh`, `phase88-sync-setup.sh`, `phase88-midi-racks.sh`, ...). Path `scripts/` is referenced by the systemd unit - do not rename. |
 | `kernel/linux-6.18.55/` | the kernel tree where the driver was fixed. Branch `phase88`, baseline `941c14e58`, 6 submission commits + 1 RFC. This is 25 G and is not in this repo. |
-| `analysis/` | the investigation log (`README.md`, dated entries), the disassembly (`ews32.dis`, `text.dis`, `mac.dis`), the generated patches (`series/0001..0006`, `phase88-fix.patch`), and `baseline/` (the original failure capture). |
+| `analysis/` | the investigation log (`README.md`, dated entries), the disassembly (`ews32.dis`, `text.dis`, `mac.dis`), and `baseline/` (the original failure capture). |
+| `upstream/` | the submission package: `alt-single-switch/series/0001..0006` (recommended, one Line/Mic switch), `series/` (same six with four switches), `cover-letter.txt`, `CHANGED-FILES.md`, `HOWTO-send-the-patches.md`, `msg/` (commit messages + the rebase helper), `do-not-send/` (the RFC debug commit). **Nothing has been sent yet.** |
 | `driver/` | the vendor drivers used as the reference: `win/` (Windows 5.51b + control panel) and `os/` (Mac OS 9). `driver/README.md` says which file proved what. Binaries not in this repo (9 M), the notes are. |
 | `scripts/README.md` | every tool in one table, with which ones need JACK stopped and which need the RFC debug module. |
 | `logs/` | run logs from the scripts (verify, cycle, postboot, clock sweeps). Referenced by the scripts - do not rename. |
