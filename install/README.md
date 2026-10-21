@@ -10,11 +10,13 @@ install/
 │   ├── asound.conf                   -> /etc/asound.conf
 │   ├── default/phase88               -> /etc/default/phase88
 │   └── systemd/system/phase88-audio.service -> /etc/systemd/system/
+├── etc/kernel/postinst.d/phase88-oot  -> /etc/kernel/postinst.d/ (rebuild on kernel update)
 └── modules/                          prebuilt modules + modinfo proof
-    ├── snd-ice1712-6.18.55.ko.xz
+    ├── snd-ice1712-6.18.55.ko.xz     the module this box runs (md5 8dcc5dac... after the kit rebuild)
     ├── snd-ice1712-6.12.111+deb13-amd64.ko.xz   (stock Debian kernel, see modinfo file)
     ├── snd-ice17xx-ak4xxx-6.12.111+deb13-amd64.ko.xz
     ├── MODINFO-stock-debian-6.12.111.txt
+    ├── MODINFO-6.18.55.txt
     └── Makefile.oot-example          the 5-line out-of-tree Makefile
 ```
 
@@ -68,6 +70,51 @@ and the guide's section 2 has the short version.
 
 One card versus two, and the empty-clock-input trap, are in the guide (sections
 5 and 6).
+
+## After a kernel update
+
+A new kernel brings its own, unpatched `snd-ice1712`, and the copy in
+`/lib/modules/<old-version>/updates/` belongs to the *old* version - so after
+`apt upgrade linux-image-*` the card falls back to the broken driver.
+
+`etc/kernel/postinst.d/phase88-oot` fixes that automatically: Debian runs it for
+every freshly installed kernel, and it rebuilds the module from
+`../module-kit/` (8 files, 10 s) against `/lib/modules/<new-version>/build`,
+installs it into `updates/` and runs `depmod`.  It never fails a kernel install;
+if headers are missing it writes a warning and the exact command to fix it to
+`/var/log/phase88-kernel-hook.log`.  `scripts/phase88-install-policy.sh` installs it for you, or by hand:
+
+```sh
+install -m 0755 install/etc/kernel/postinst.d/phase88-oot /etc/kernel/postinst.d/
+```
+
+On this box it is installed and pointed at this checkout (verified 2026-10-21:
+`/etc/kernel/postinst.d/phase88-oot`, `SCRIPT=/root/terratec/scripts/phase88-module-install.sh`).
+
+Do it by hand, any time:
+
+```sh
+/root/terratec/scripts/phase88-module-install.sh --check      # what is installed
+/root/terratec/scripts/phase88-module-install.sh              # rebuild + install + depmod
+/root/terratec/scripts/phase88-module-install.sh --reload     # also load it now
+```
+
+Why `updates/` wins: depmod orders directories by priority, and for a given
+kernel version a module in `updates/` shadows the stock one in `kernel/` -
+measured on this box, `modules.dep` contains exactly one `snd-ice1712` entry
+(`updates/snd-ice1712.ko`) even though `kernel/sound/pci/ice1712/snd-ice1712.ko.xz`
+is still on disk.  Check any machine with:
+
+```sh
+grep -c snd-ice1712 /lib/modules/$(uname -r)/modules.dep     # 1 = ours shadows the stock one
+modprobe --show-depends snd_ice1712 | grep snd-ice1712.ko
+```
+
+Our file is owned by no package (`dpkg -S` finds nothing), so `apt` never
+overwrites or removes it - the only way to lose the fix is a kernel version that
+has no rebuilt module.  DKMS does the same job as the hook if you prefer it; the
+kit is a normal out-of-tree module directory, so a `dkms.conf` with
+`make -C ${kernel_source_dir} M=${dkms_tree}/${pkgname}/${pkgver} modules` works.
 
 ## Uninstall
 

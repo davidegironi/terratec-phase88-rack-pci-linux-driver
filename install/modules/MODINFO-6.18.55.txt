@@ -1,0 +1,5 @@
+file: /lib/modules/6.18.55/updates/snd-ice1712.ko (built from module-kit/, see module-kit/README.md)
+md5: 8dcc5dac196de1b6ebf319cbe6bf5209
+ICEnsemble ICE1712 (Envy24)
+controls: 'Line/Mic 7/8 Switch' strings = 1
+verified: phase88-verify.sh card 0 + card 1 all checks passed, logs/verify-20261021-093730.log (card 0) and card 1 run 09:44 same day

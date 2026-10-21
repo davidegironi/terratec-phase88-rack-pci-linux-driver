@@ -86,12 +86,34 @@ make -C /lib/modules/$(uname -r)/build M=<that dir> modules -j$(nproc)
 ```
 
 Debian's own module contains 0 occurrences of `Line/Mic 7/8 Switch`, ours
-contains 1, so the built module is genuinely the patched driver.  Kernel
-upgrades mean a rebuild (`DKMS` automates it; the doc gives a `dkms.conf`).  The
-two caveats: Secure Boot (this box boots legacy BIOS so an unsigned module loads
-with the `OE` taint; on an EFI machine you must sign it or disable Secure Boot),
-and the patch hunks in `snd_ice1712_get_eeprom()` / `snd_ice1712_capture_open()`
-may need re-anchoring on a future stable release.
+contains 1, so the built module is genuinely the patched driver.  The two
+caveats: Secure Boot (this box boots legacy BIOS so an unsigned module loads with
+the `OE` taint; on an EFI machine you must sign it or disable Secure Boot), and
+the patch hunks in `snd_ice1712_get_eeprom()` / `snd_ice1712_capture_open()` may
+need re-anchoring on a future stable release.
+
+### 2.1 You do not need a kernel tree to keep it working
+
+`snd-ice1712` is built from four objects - `ice1712.o delta.o hoontech.o ews.o` -
+so the entire patched driver is **8 source files, 212 KB**, in `../module-kit/`
+with a 2-line Makefile.  It compiles against headers, not against a built tree:
+
+```sh
+/root/terratec/scripts/phase88-module-install.sh          # 10 s build + install + depmod
+```
+
+Measured: 10 s against `linux-headers-6.12.111+deb13-amd64`, 10 s against the
+6.18.55 tree, and the kit-built module was installed and verified on both cards
+(`phase88-verify.sh` all checks passed; card 1 RUNNING at 44.1/48/96 kHz).
+
+That is also the answer to "the kernel package got updated":
+`install/etc/kernel/postinst.d/phase88-oot` (installed under
+`/etc/kernel/postinst.d/`) rebuilds and installs the module for every new kernel
+automatically, logs to `/var/log/phase88-kernel-hook.log`, and never fails a
+kernel install.  DKMS works too, since the kit is an ordinary out-of-tree module
+directory.  `install/README.md` explains why `/lib/modules/<ver>/updates/` beats
+the distro copy - `modules.dep` on this box lists only the `updates/` entry even
+though the stock `.ko.xz` is still on the disk.
 
 ## 3. Do I need a custom `/etc/asound.conf`?
 
@@ -422,6 +444,7 @@ card, matching the two sockets.  `aconnect -l` shows what the sequencer sees.
 | what you see | what it means |
 |---|---|
 | `AK4524 chip select failed` in `dmesg` even though the card works | stale messages from the distro module, which is tried before the patched one wins.  Check the timestamps (`journalctl -k -b`) — what matters is the state after `TerraTec Phase88 at 0x..., irq ...` |
+| card worked yesterday, `AK4524 chip select failed` is back and the capture is dead | the running kernel has no patched module: `apt upgrade` installed a new kernel and `/lib/modules/<old>/updates/snd-ice1712.ko` belongs to the old one. `phase88-module-install.sh --check` says it in one line; `phase88-module-install.sh --kver=$(uname -r)` (or the `postinst.d` hook, if installed) fixes it in ~10 s + depmod |
 | QJackCtl does not offer `phase88x2` | its device list is a probe of `hw:` cards; type the name into 'ALSA Device Name' |
 | `Invalid CTL phase88x2` | fixed by the `ctl.` alias in `/etc/asound.conf`; harmless either way |
 | xrun counter runs away, CPU high, audio still fine | a **dead client** still registered (any tool that exits without `jack_client_close()`).  One of my test clients did this 12103 times at 35 % CPU.  Restart the server; the hardware has nothing to do with it |

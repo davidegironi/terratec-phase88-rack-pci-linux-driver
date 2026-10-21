@@ -1,0 +1,39 @@
+#!/bin/sh
+# /etc/kernel/postinst.d/phase88-oot
+#
+# A new kernel brings its own, unpatched snd-ice1712. This hook rebuilds the
+# patched module for the kernel that was just installed and puts it in
+# /lib/modules/<version>/updates/, which shadows the stock copy.
+#
+# kernel postinst convention: $1 = kernel version, $2 = path to the image.
+# It must never fail a kernel installation, so everything is best-effort and
+# the exit status is always 0.
+
+KVER="${1:-}"
+SCRIPT=/root/terratec/scripts/phase88-module-install.sh
+LOG=/var/log/phase88-kernel-hook.log
+
+{
+    echo "---- $(date -Is) kernel=$KVER"
+    if [ -z "$KVER" ] || [ ! -d "/lib/modules/$KVER" ]; then
+        echo "no module directory for '$KVER', nothing to do"
+        exit 0
+    fi
+    if [ ! -f "$SCRIPT" ]; then
+        echo "WARNING: $SCRIPT is gone; the PHASE 88 will not work on $KVER"
+        exit 0
+    fi
+    if [ ! -e "/lib/modules/$KVER/build" ] && \
+       [ ! -d "/usr/src/linux-headers-$KVER" ]; then
+        echo "WARNING: no headers for $KVER, the PHASE 88 module was NOT rebuilt."
+        echo "         fix afterwards with:"
+        echo "             apt install linux-headers-$KVER"
+        echo "             $SCRIPT --kver=$KVER"
+        exit 0
+    fi
+    "$SCRIPT" --kver="$KVER" \
+        && echo "OK: patched snd-ice1712 installed for $KVER" \
+        || echo "ERROR: rebuild failed for $KVER - the PHASE 88 will not work on it"
+} >> "$LOG" 2>&1
+
+exit 0

@@ -64,6 +64,15 @@ systemctl daemon-reload
 systemctl enable phase88-audio.service
 echo "enabled phase88-audio.service (mixer defaults + front mic input + clock)"
 
+# Keep the fix alive when the kernel package is updated: Debian runs
+# /etc/kernel/postinst.d/* for every kernel it installs.
+if [ -f "$SRC/kernel/postinst.d/phase88-oot" ]; then
+	install -D -m 0755 "$SRC/kernel/postinst.d/phase88-oot" /etc/kernel/postinst.d/phase88-oot
+	INSTALLER=$(dirname "$HERE")/scripts/phase88-module-install.sh
+	sed -i "s|^SCRIPT=.*|SCRIPT=$INSTALLER|" /etc/kernel/postinst.d/phase88-oot
+	echo "installed /etc/kernel/postinst.d/phase88-oot (rebuilds the module for new kernels: $INSTALLER)"
+fi
+
 cards=$(awk '/ICE1712/{print $1}' /proc/asound/cards | tr '\n' ' ')
 if [ -n "$cards" ]; then
 	echo "cards present: $cards"
