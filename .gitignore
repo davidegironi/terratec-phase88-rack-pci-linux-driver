@@ -8,6 +8,9 @@
 /logs/
 # scratch symlinks into logs/
 follow-*
+# the self-contained 280 MB bundle (full kernel history) - keep it as a file,
+# do not put it in the repo; the 12 KB patch-only bundles above ARE tracked
+/archive/phase88-full-history.bundle
 # build leftovers
 *.o
 *.ko

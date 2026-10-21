@@ -91,6 +91,34 @@ install -m 0755 install/etc/kernel/postinst.d/phase88-oot /etc/kernel/postinst.d
 On this box it is installed and pointed at this checkout (verified 2026-10-21:
 `/etc/kernel/postinst.d/phase88-oot`, `SCRIPT=/root/terratec/scripts/phase88-module-install.sh`).
 
+### Does a fresh machine get it automatically?
+
+Not by itself - nothing in an `install/` copy lands in `/etc` on its own.  It is
+applied when you run `scripts/phase88-install-policy.sh`, which copies every file
+under `install/etc/`, including the hook, and rewrites its `SCRIPT=` line to the
+path the repo actually lives at.  So on a new machine:
+
+```sh
+apt install build-essential linux-headers-$(uname -r)     # to build (or skip: use the prebuilt .ko)
+cp -a install /opt/phase88 && cp -a module-kit scripts /opt/phase8/   # or wherever
+/opt/phase8/scripts/phase88-install-policy.sh /tmp/snd-ice1712.ko      # policy + module + hook
+```
+
+Three things to know:
+
+* The hook only fires for kernels installed **after** it is in place.  The kernel
+  you are booted into still needs the module once - via the `.ko` argument above,
+  or `phase88-module-install.sh`.
+* Rebuilding on that machine needs `module-kit/` **and** `scripts/phase88-module-install.sh`
+  to stay present (the hook calls the script, the script reads the kit).  Keep the
+  212 KB kit; it is not a temporary build directory.
+* `/etc/kernel/postinst.d/` is the **Debian** mechanism (dpkg `linux-image-*`
+  postinst runs everything in it).  Arch uses a pacman hook
+  (`/etc/pacman.d/hooks/*.hook`, `After = transaction`, same script inside);
+  Fedora/RHEL runs nothing there, so use DKMS or call the script from a
+  `dnf` plugin/post-transaction action.  On any of them the manual one-liner
+  always works: `phase88-module-install.sh --kver=$(uname -r)`.
+
 Do it by hand, any time:
 
 ```sh

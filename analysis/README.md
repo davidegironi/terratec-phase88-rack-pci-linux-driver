@@ -1344,3 +1344,51 @@ python3 scripts/phase88-midi-diag.py hw:1,0 --rx=hw:0,1 --pattern 00 --repeat 3 
 
 If RX is bad and TX clean, the socket's input side (optocoupler/contacts) is
 itself the fault; if TX is bad too, it is the shared line driver on that board.
+
+---
+
+## 2026-10-21 (afternoon): the 25 G kernel tree deleted (option A), new-machine path proven
+
+User approved (m02870, *"option A is ok"*) and asked whether the kernel-update
+hook lands automatically on a **new** machine.
+
+**Executed:** `rm -rf kernel/linux-6.18.55` (25 G, only the pristine
+`linux-6.18.55.tar.xz` 148 MB kept). Disk 38 G -> 13 G used of 106 G. Before
+deleting: `git status --porcelain` clean, zero untracked files, and
+`archive/phase88-full-history.bundle` (280 MB, `git bundle create ... master
+phase88-alt-single phase88 pre-reorder-mpu2`, *"The bundle records a complete
+history"*, verified) so nothing depends on the tree any more. Added
+`/archive/phase88-full-history.bundle` to `.gitignore` (the two 12 KB bundles stay tracked).
+
+**Post-deletion state, measured:** `/lib/modules/6.18.55/build` is now a dangling
+symlink (`-> /root/terratec/kernel/linux-6.18.55`) - expected, and only relevant
+if you want to compile *for the custom 6.18.55 kernel again*; the running module
+is unaffected (`--check` prints `build dir: MISSING` with the fix hint). Both
+cards still pass `phase88-verify.sh 1` and `phase88-verify.sh 0` -> `### RESULT:
+all checks passed` (card 1 RUNNING 44.1/48/96 kHz, card 0 48 kHz as clock slave).
+
+**New-machine answer, tested rather than asserted:** `phase88-module-install.sh`
+used to default `KIT=/root/terratec/module-kit`, which breaks any relocated
+checkout - it now resolves the kit relative to the script
+(`HERE_SCRIPT=$(dirname "$(readlink -f "$0")"); KIT=${KIT:-$(dirname
+"$HERE_SCRIPT")/module-kit}`) with /root/terratec as fallback. Proof: copied
+`scripts/ module-kit install/` to `/tmp/p88copy` and ran
+`phase88-module-install.sh --kver=6.12.111+deb13-amd64 --dry-run` -> `built ok:
+6.12.111+deb13-amd64 ... 'Line/Mic 7/8 Switch' present: 1` in **6.5 s**.
+So a fresh machine needs: `build-essential` + `linux-headers-$(uname -r)`, the
+repo (or at least `scripts/` + `install/` + `module-kit/`, which must stay
+siblings because `phase88-install-policy.sh` derives `SRC=$(dirname "$HERE")/install/etc`),
+then `phase88-install-policy.sh` - which is what installs
+`/etc/kernel/postinst.d/phase88-oot` and rewrites its `SCRIPT=` line. The hook is
+therefore **not** automatic on a new machine: it is applied by that script, and it
+only fires for kernels installed *after* it is in place (the currently booted
+kernel still needs the module once). `/etc/kernel/postinst.d/` is Debian-specific:
+Arch wants a pacman hook, Fedora nothing - documented in `install/README.md`.
+
+**Kit provenance nuance found while documenting:** the kit is copied from
+`2e145dfc9`, the RFC commit on top of the six, so it builds the *diagnostic*
+module: +99 lines all in `ews.c` (`ews.h`/`ice1712.c` byte-identical to the
+submission set, diffed against a pristine tree + the six patches applied) ->
+`strings` shows 2x `Phase88 Debug Expander` and 84 controls/card instead of 81.
+`module-kit/README.md` now says how to tell the two builds apart and how to build
+exactly the submission set.

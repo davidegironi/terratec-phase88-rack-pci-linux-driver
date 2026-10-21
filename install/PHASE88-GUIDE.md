@@ -102,8 +102,9 @@ with a 2-line Makefile.  It compiles against headers, not against a built tree:
 /root/terratec/scripts/phase88-module-install.sh          # 10 s build + install + depmod
 ```
 
-Measured: 10 s against `linux-headers-6.12.111+deb13-amd64`, 10 s against the
-6.18.55 tree, and the kit-built module was installed and verified on both cards
+Measured: 10 s against `linux-headers-6.12.111+deb13-amd64` (6.5 s in a copy of
+the repo at an arbitrary path), 10 s against the 6.18.55 tree, and the kit-built
+module was installed and verified on both cards
 (`phase88-verify.sh` all checks passed; card 1 RUNNING at 44.1/48/96 kHz).
 
 That is also the answer to "the kernel package got updated":
@@ -114,6 +115,11 @@ kernel install.  DKMS works too, since the kit is an ordinary out-of-tree module
 directory.  `install/README.md` explains why `/lib/modules/<ver>/updates/` beats
 the distro copy - `modules.dep` on this box lists only the `updates/` entry even
 though the stock `.ko.xz` is still on the disk.
+
+*(The 25 G kernel tree was deleted on 2026-10-21 with the user's approval, so the
+kit is now the source of truth and `/lib/modules/6.18.55/build` is a dangling
+symlink; restoring a build tree is covered in `../archive/README.md`.  Everything
+in this guide still works - the module loads from `/lib/modules`, not from source.)*
 
 ## 3. Do I need a custom `/etc/asound.conf`?
 

@@ -1,13 +1,23 @@
 # Archive: everything that survives deleting the 25 G kernel tree
 
-Two `git bundle` files hold the entire development history of the driver - 12 KB
-each, because they contain only the commits above the baseline, not the kernel's
-40 years of history.
+> **Status 2026-10-21: the tree is gone.** Option A below was carried out after
+> the user approved it (*"option A is ok"*). `/root/terratec/kernel/` now holds
+> only `linux-6.18.55.tar.xz` (148 MB); 25 GB freed, disk back to 13 GB used of
+> 106 GB. Both cards were re-verified after the deletion with
+> `phase88-verify.sh 0` and `phase88-verify.sh 1`: `### RESULT: all checks
+> passed` on each (card 1 RUNNING at 44.1/48/96 kHz, card 0 as clock slave).
+> One consequence: `/lib/modules/6.18.55/build` is now a **dangling symlink** to
+> the deleted tree, so compiling for the custom 6.18.55 kernel needs the restore
+> recipe below. Debian kernels are unaffected - they use `linux-headers-*`.
+
+Three `git bundle` files hold the development history: two of 12 KB (the commits
+above the baseline only) and one self-contained 280 MB copy of everything.
 
 | file | branch | contents |
 |---|---|---|
 | `phase88-commits.bundle` | `phase88-alt-single` | **recommended**: 6 submission commits + the RFC commit (`2e145dfc9`) on top. One `Line/Mic 7/8 Switch`. |
 | `phase88-commits-four-switch.bundle` | `phase88` | the same work with four `Line/Mic n/n Switch` controls (253 insertions instead of 224) |
+| `phase88-full-history.bundle` | all 4 branches + `master` | 280 MB, **no prerequisites** - contains the baseline commit itself, so it clones anywhere. Deliberately NOT in git (see `.gitignore`); it is a backup file, copy it wherever you keep the tarball. |
 
 Both need the baseline commit `941c14e58` ("Linux 6.18.55 baseline working"),
 which is a plain `linux-6.18.55` release plus a working-tree snapshot; fetch the
@@ -26,6 +36,26 @@ You do **not** need the history to build or to send the patches:
 `../upstream/alt-single-switch/series/` has them as mail, `../upstream/phase88-fix.patch`
 as one combined diff, and `../module-kit/` has the ready-to-compile sources.
 
+## Getting the build directory back (only needed for the custom 6.18.55 kernel)
+
+`/lib/modules/6.18.55/build` points at the deleted tree. To rebuild for that
+kernel again, restore any one of these, then `make modules_prepare`:
+
+```sh
+# cheapest: the pristine tarball + the config that the installed kernel carries
+tar -xf /root/terratec/kernel/linux-6.18.55.tar.xz -C /root/terratec/kernel/
+cd /root/terratec/kernel/linux-6.18.55
+cp /boot/config-6.18.55 .config && make olddefconfig && make modules_prepare -j$(nproc)
+git init -q . && git am /root/terratec/upstream/alt-single-switch/series/000[1-6]-*.patch
+# /lib/modules/6.18.55/build already points here, nothing to re-link
+
+# or clone the complete history (tree + all branches, no separate tarball needed)
+git clone /root/terratec/archive/phase88-full-history.bundle -b phase88-alt-single /root/terratec/kernel/linux-6.18.55
+```
+
+For a **Debian kernel** you never need any of this:
+`apt install build-essential linux-headers-$(uname -r)` and the kit builds in ~10 s.
+
 ## What has to be kept, and what does not
 
 | keep | size | why |
@@ -38,7 +68,7 @@ as one combined diff, and `../module-kit/` has the ready-to-compile sources.
 |---|---|---|
 | `kernel/linux-6.18.55/` | 25 GB | build artefacts + source + 281 MB of git objects. See the two options below. |
 
-**Option A - delete it.** The installed module in `/lib/modules/6.18.55/updates/`
+**Option A - delete it. DONE 2026-10-21.** The installed module in `/lib/modules/6.18.55/updates/`
 keeps working: loading a module never needs the source tree. You lose the ability
 to compile for kernel 6.18.55 until you re-unpack the tarball and run
 `make modules_prepare`, because `/lib/modules/6.18.55/build` is a symlink into

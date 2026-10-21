@@ -53,17 +53,42 @@ Measured on this box:
 `md5` differs from a build made inside the kernel tree (`6cf98eec...`) because the
 build directory is baked into the object; the source is identical.
 
-## Where these files came from
+## Provenance - this directory is the source now
 
-Copied from branch `phase88-alt-single` of `/root/terratec/kernel/linux-6.18.55`
-at commit `2e145dfc9` (the 6 submission commits + the RFC commit on top).  To
-refresh them after working in the tree:
+Copied from branch `phase88-alt-single` at commit `2e145dfc9`.  The 25 G kernel
+tree they came from was **deleted on 2026-10-21** (option A in `../archive/README.md`),
+so the kit is no longer a copy of something else: it is where the driver source
+lives day to day, with the history in `../archive/` and the mail-form patches in
+`../upstream/`.  Get a full tree back with either
+`git clone /root/terratec/archive/phase88-full-history.bundle -b phase88-alt-single`
+or the tarball + `git am` (recipe in `../archive/README.md`).
+
+### This kit is the diagnostic build, not the submission build
+
+`2e145dfc9` is the RFC commit **on top of** the six submission commits, so the kit
+carries the bring-up debug controls: +99 lines, all in `ews.c` (`ews.h` and
+`ice1712.c` are byte-identical to the submission set, diffed 2026-10-21).  Tell
+the two builds apart without opening the source:
 
 ```sh
-git -C /root/terratec/kernel/linux-6.18.55 checkout phase88-alt-single
-cp /root/terratec/kernel/linux-6.18.55/sound/pci/ice1712/{ice1712,ews,delta,hoontech}.{c,h} \
-   /root/terratec/module-kit/
+strings snd-ice1712.ko | grep -c 'Phase88 Debug Expander'   # 2 = this kit, 0 = submission set
+strings snd-ice1712.ko | grep -c 'Line/Mic 7/8 Switch'      # 1 in both
+amixer -c 0 contents | grep -c '^numid'                     # 84 = this kit, 81 = submission set
 ```
 
-If you start from a **pristine** tree instead (kernel.org tarball, `linux-source`),
-apply the series first: `git am /root/terratec/upstream/alt-single-switch/series/000[1-6]-*.patch`.
+The prebuilt modules in `../install/modules/` are the same diagnostic build: the
+clock work and the expander measurements needed the two raw register controls, and
+on this machine the sound core must not be reloaded casually (an oops inside
+`snd_pcm_open()` once wedged `register_mutex` until reboot).  Those three extra
+controls are `iface=CARD`, do not touch audio and are not part of what gets sent
+to the list.
+
+To build **exactly** the submission set (e.g. to double-check that the patch
+applies and compiles on its own):
+
+```sh
+tar -xf /root/terratec/kernel/linux-6.18.55.tar.xz
+cd linux-6.18.55 && git init -q . && git add -A && git commit -qm base
+git am /root/terratec/upstream/alt-single-switch/series/000[1-6]-*.patch    # verified clean 2026-10-21
+make -C /lib/modules/$(uname -r)/build M=$PWD/sound/pci/ice1712 modules
+```

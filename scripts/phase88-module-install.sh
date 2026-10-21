@@ -15,7 +15,11 @@
 # then does not even list the stock file. Nothing here touches other kernels.
 set -u
 
-KIT=${KIT:-/root/terratec/module-kit}
+# Default kit = the module-kit/ next to this script, so the repo can live
+# anywhere; /root/terratec stays as a fallback.
+HERE_SCRIPT=$(dirname "$(readlink -f "$0")")
+KIT=${KIT:-$(dirname "$HERE_SCRIPT")/module-kit}
+[ -f "$KIT/ice1712.c" ] || KIT=${KIT:-/root/terratec/module-kit}
 KVER=$(uname -r)
 RELOAD=0 DRY=0 CHECK=0 CONTROL='Line/Mic 7/8 Switch'
 LOGTAG=phase88-module-install
