@@ -34,7 +34,7 @@ each one became visible while bringing the board up:
      undefined after power-on, and while it is undefined the AK4524 keep their
      serial output drivers disabled: all eight analog capture channels read
      exact zeros although the codecs are programmed, running and unmuted.
-  5  ice1712: add the PHASE 88 Line/Mic input switches
+  5  ice1712: add the PHASE 88 Line/Mic input switch
      That same second register carries the input preamp select a microphone
      needs; measured +40.8 dB on channel 7 and +30.3 dB on channel 8 with the
      same microphone.
@@ -57,8 +57,8 @@ built against Debian's stock 6.12.111 with no other change):
     with the sync cable the slave follows the master's clock (moving the master
     by 8 % moves the slave by 8 %: -81292 ppm against -81295 ppm), so the two
     racks sample coherently;
-  * both MIDI sockets pass a SysEx loopback (byte-exact, three frames), the rear
-    one only after patch 6.
+  * the rear MIDI socket of each rack shows up only after patch 6, and passes a
+    SysEx loopback byte-exact; the front socket keeps working as before.
 
 Questions for the maintainers, since I am happy to redo this your way:
 

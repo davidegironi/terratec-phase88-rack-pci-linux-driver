@@ -72,10 +72,19 @@ the `From:` of the email is taken from the patch.
 
 ## 2. Regenerate the patches (after step 0 or 1)
 
+Pick the set you are sending and keep it in a variable, so the commands below
+cannot mix the two variants up:
+
+```sh
+SERIES=/root/terratec/upstream/alt-single-switch/series   # RECOMMENDED
+# SERIES=/root/terratec/upstream/series                   # four-switch variant
+```
+
 ```sh
 cd /root/terratec/kernel/linux-6.18.55
-rm -f /root/terratec/upstream/series/*.patch
-git format-patch --cover-letter -o /root/terratec/upstream/series 941c14e58..HEAD~1
+git checkout phase88-alt-single        # or phase88, to match $SERIES
+rm -f $SERIES/*.patch
+git format-patch --cover-letter -o $SERIES 941c14e58..HEAD~1
 ```
 
 Fill in `0000-cover-letter.patch`: the subject line `*** SUBJECT HERE ***` and
@@ -85,14 +94,18 @@ the body under `*** BLURB HERE ***` (a draft is in `upstream/cover-letter.txt`).
 
 ```sh
 cd /root/terratec/kernel/linux-6.18.55
-for p in /root/terratec/upstream/series/000[1-6]-*.patch; do
-  echo "--- $p"; scripts/checkpatch.pl --no-tree --strict --no-signoff "$p" | tail -3
+for p in $SERIES/000[1-6]-*.patch; do
+  echo "--- $p"; scripts/checkpatch.pl --no-tree --strict "$p" | tail -3
 done
 ```
-Last run: 0 errors, 0 warnings, 4 style checks (two continuation-line
-alignments in `ews.c`, the `(0x42>>1)` spacing which matches the surrounding EWS
-code, and `CamelCase` on the pre-existing `ICE1712_CFG_2xMPU401` macro). A
-"Missing Signed-off-by" error only appears if you check before step 1.
+Last run on the recommended set (before your `Signed-off-by` lines exist): every
+patch reports exactly one `ERROR: Missing Signed-off-by line(s)` - that is step 1
+- and nothing else but two deliberate CHECKs over the whole series: the
+`(0x42>>1)` spacing in `ews.h` (it matches the neighbouring EWS macros) and
+`Avoid CamelCase: ICE1712_CFG_2xMPU401` (a macro that already exists in the
+tree). The two continuation-line alignment CHECKs patch 0005 used to produce are
+fixed in the code: with one control the array plus `for` loop became a single
+`snd_ice1712_phase88_linemic_ctl` object and one `snd_ctl_add()`.
 
 ## 4. Who to send to
 
@@ -123,7 +136,7 @@ patchwork threads and `b4 send` refuses obvious mistakes):
 
 ```sh
 apt install b4            # or: pipx install b4
-cd /root/terratec/upstream/series
+cd $SERIES
 b4 send 0000-cover-letter.patch 0001-*.patch 0002-*.patch 0003-*.patch \
         0004-*.patch 0005-*.patch 0006-*.patch --dry-run      # look first
 b4 send ...                                                    # then really
@@ -137,7 +150,7 @@ git config --global sendemail.smtpport 587
 git config --global sendemail.smtpencryption tls
 git config --global sendemail.smtpuser you@example.com
 git config --global sendemail.smtpPass 'app-password-here'   # or use an app-specific password
-cd /root/terratec/upstream/series
+cd $SERIES
 git send-email --dry-run \
   --to=linux-sound@vger.kernel.org \
   --cc=perex@perex.cz --cc=tiwai@suse.com \
