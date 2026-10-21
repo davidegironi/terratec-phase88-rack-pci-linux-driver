@@ -49,13 +49,15 @@ rebuild in 10 s.
 rm -rf /root/terratec/kernel/linux-6.18.55        # keep the .tar.xz next to it
 ```
 
-**Option B - prune it, keep it buildable (25 GB -> about 1.5 GB).**
+**Option B - prune it, keep it buildable (25 GB -> about 1.7 GB: 1.4 GB of
+source - measured from the pristine tarball, 97288 files - plus 281 MB of git
+objects).**
 
 ```sh
 cd /root/terratec/kernel/linux-6.18.55
 git status --porcelain            # must be empty: everything is committed
 make clean                        # drops .o/.ko/vmlinux, keeps source + .git
-du -sh .                          # ~1.5 G
+du -sh .                          # ~1.7 G (1.4 G source + 281 M of .git)
 make modules_prepare -j$(nproc)   # re-run when you want to build the kit again
 ```
 
