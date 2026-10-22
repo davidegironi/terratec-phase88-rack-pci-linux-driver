@@ -213,6 +213,14 @@ Worth knowing:
   rule on `snd-card-*` add, or by hand after boot.  With one card you can skip
   all of it and unmute in `alsamixer` when you need it.
 
+To start JACK automatically when the desktop user logs in, install the optional
+per-user unit with `sudo scripts/phase88-install-jackservice.sh`. It selects
+`phase88x2` for two detected cards and `hw:Phase88` for one, using 48 kHz,
+1024-frame periods, and two periods. This is separate from
+`phase88-audio.service`, which only configures the driver and mixer. Disable
+QJackCtl's automatic JACK startup if using this service. Stop/disable the user
+unit with `systemctl --user disable --now phase88-jack.service`.
+
 ## 5. Is any of this different with one card versus two?
 
 | piece | one card | two cards |

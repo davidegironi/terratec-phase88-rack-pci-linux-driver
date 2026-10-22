@@ -35,6 +35,18 @@ actually lives, and enables `phase88-audio.service`.  It refuses a module whose
 loading a mismatched sound module is how you wedge the box.  Run it with JACK
 stopped; it does not start or stop audio.
 
+To additionally start JACK automatically at desktop login, run:
+
+```sh
+sudo scripts/phase88-install-jackservice.sh
+```
+
+This installs a per-user systemd unit (not a system service): it starts JACK
+with `phase88x2` when two PHASE 88 cards are detected, or `hw:Phase88` when
+only one is present. It starts immediately if the target user is already logged
+in, otherwise at their next login. Disable QJackCtl's own JACK auto-start to
+avoid competing servers. Stop/disable it from that user's session with `systemctl --user disable --now phase88-jack.service`.
+
 ## By hand
 
 ```sh

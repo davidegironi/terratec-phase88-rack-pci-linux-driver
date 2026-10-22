@@ -24,10 +24,16 @@ explicitly instead of looking broken.
 | `phase88-mixer.sh [card]` | unmute + unity gains + 0 dB codecs + front input on, for **every** ICE1712 card, then applies the word-clock roles. Called by `phase88-audio.service` at boot. |
 | `phase88-sync-setup.sh [--show\|--off\|master slave]` | clock master/slave via 'Multi Track Internal Clock'. Refuses while a stream runs, because `snd_ice1712_set_pro_rate()` (ice1712.c:979) silently drops the write. Reads `/etc/default/phase88`. |
 | `phase88-install-policy.sh [snd-ice1712.ko]` | install `install/etc/*` (and optionally the module, vermagic-checked) on a fresh box. |
+| `phase88-install-jackservice.sh` | install and enable a per-user systemd service that starts JACK at login; chooses `phase88x2` for two cards or `hw:Phase88` for one. Run with `sudo`; service runs as the logged-in desktop user. |
 | `phase88-verify.sh [card]` | the full check: probe, PCM list, controls, playback at 44.1/48/96 kHz, capture, no oops. Prints `### RESULT: all checks passed`. Pass the card number bare (`phase88-verify.sh 1`, not `-c 1`). Log in `../logs/`. **(ALSA)** |
 | `phase88-cycle.sh` | `rmmod` + `modprobe` + `phase88-verify.sh`, with a dmesg watermark so old errors from the distro module do not fail the run. |
 
 ## Build and install
+
+For JACK auto-start at desktop login, run `sudo scripts/phase88-install-jackservice.sh`.
+It installs a user unit and helper under the target user's home. It starts JACK
+immediately if that user is already logged in; otherwise it starts at their next
+login. Do not also configure QJackCtl to auto-start a second JACK server.
 
 | tool | what it does |
 |---|---|
