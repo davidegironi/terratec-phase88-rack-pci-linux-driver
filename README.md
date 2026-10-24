@@ -2,44 +2,39 @@
 
 The PHASE 88 (`1412:1712`, subsystem `153b:1151`) does not work with a stock
 Linux driver: it probes, fails with `AK4524 chip select failed, check cable to
-the front module` and disappears.  This folder holds the whole job: the driver
-fix, the evidence for it, the userspace policy, the test tools and the vendor
-drivers that were reverse-engineered to get there.
+the front module` and disappears. This repository contains the driver fix, the
+hardware investigation and evidence, installation policy, test tools, and the
+vendor drivers used as references.
 
-**Start here:** [`install/PHASE88-GUIDE.md`](install/PHASE88-GUIDE.md) - quick
-start, what the patch fixes, one card versus two, JACK/Reaper setup, MIDI,
+**Start here:** [`install/PHASE88-GUIDE.md`](install/PHASE88-GUIDE.md) — quick
+start, what the patch fixes, one card versus two, JACK/Reaper setup, MIDI, and
 troubleshooting.
 
 ## Folder map
 
-| path | what it is |
+| path | contents |
 |---|---|
-| `install/` | **everything needed to put this on a machine**: the guide, the `/etc` files (mixer service, `asound.conf`, defaults, kernel-update hook), prebuilt modules, the stock-kernel recipe. Read `install/README.md`. |
-| `scripts/` | every test and setup tool (`phase88-verify.sh`, `phase88-mixer.sh`, `phase88-sync-setup.sh`, `phase88-midi-racks.sh`, ...). Path `scripts/` is referenced by the systemd unit - do not rename. |
-| `kernel/` | **deleted 2026-10-21** (25 G of kernel tree, option A in `archive/README.md`). Only `linux-6.18.55.tar.xz` (148 MB) remains. The work that was in that tree lives in `module-kit/` (sources), `archive/` (git history as bundles) and `upstream/` (patches). Note `/lib/modules/6.18.55/build` is now a dangling symlink - restore recipe in `archive/README.md`. |
-| `module-kit/` | the whole driver as 8 files + a 2-line Makefile (212 KB). Builds against `linux-headers-*` in ~10 s; used by `scripts/phase88-module-install.sh` and by the kernel-update hook. |
-| `archive/` | the git history as bundles: two 12 KB ones (commits above the baseline, tracked in git) plus `phase88-full-history.bundle` (280 MB, self-contained, deliberately not in git), and the keep/delete + restore recipes. |
-| `analysis/` | the investigation log (`README.md`, dated entries), the disassembly (`ews32.dis`, `text.dis`, `mac.dis`), and `baseline/` (the original failure capture). |
-| `upstream/` | the submission package: `alt-single-switch/series/0001..0006` (recommended, one Line/Mic switch), `series/` (same six with four switches), `cover-letter.txt`, `CHANGED-FILES.md`, `HOWTO-send-the-patches.md`, `msg/` (commit messages + the rebase helper), `do-not-send/` (the RFC debug commit). **Nothing has been sent yet.** |
-| `driver/` | the vendor drivers used as the reference: `win/` (Windows 5.51b + control panel) and `os/` (Mac OS 9). `driver/README.md` says which file proved what. Binaries not in this repo (9 M), the notes are. |
-| `scripts/README.md` | every tool in one table, with which ones need JACK stopped and which need the RFC debug module. |
-| `logs/` | run logs from the scripts (verify, cycle, postboot, clock sweeps). Referenced by the scripts - do not rename. |
-| `phase88_driver_agent_handoff.md` | the original brief, kept as-is. |
+| `install/` | Deployment material: [`PHASE88-GUIDE.md`](install/PHASE88-GUIDE.md), [`README.md`](install/README.md), `debian-stock-kernel.md`, `/etc` configuration and service files, the Debian kernel-update hook, and prebuilt modules with their `modinfo` records. |
+| `module-kit/` | The out-of-tree `snd-ice1712` source: `ice1712.c/.h`, `ews.c/.h`, `delta.c/.h`, `hoontech.c/.h`, and `Makefile`. [`README.md`](module-kit/README.md) explains the source, build, and diagnostic-versus-submission versions. |
+| `scripts/` | Setup, install, verification, PCM/JACK, clock-sync, MIDI, and hardware diagnostic tools. [`README.md`](scripts/README.md) documents each tool and its requirements. Paths under `scripts/` are referenced by service configuration; do not rename the directory. |
+| `analysis/` | Investigation notes and evidence: [`README.md`](analysis/README.md), original-failure captures in `baseline/`, Windows/Mac disassemblies, the RFC debug-controls patch, and work-in-progress patch material. |
+| `upstream/` | Patch submission materials: `alt-single-switch/series/` (recommended six-patch series with one Line/Mic switch), `series/` (six-patch four-switch alternative), cover letters, `phase88-fix.patch` (combined diff), `CHANGED-FILES.md`, `HOWTO-send-the-patches.md`, and commit-message files in `msg/`. |
+| `archive/` | Git bundle backups and restore/retention instructions in [`README.md`](archive/README.md). The full-history bundle is a separate backup; the smaller bundles contain the development commits. |
+| `driver/` | Windows and Mac OS 9 vendor driver and control-panel references used during reverse engineering. [`README.md`](driver/README.md) describes the relevant files and findings. These are reference materials, not Linux driver code. |
+| `kernel/` | `linux-6.18.55.tar.xz`, the kernel source tarball used by the custom-kernel work. The extracted 25 GB build tree was removed; see [`archive/README.md`](archive/README.md) for restoration instructions. |
+| `logs/` | Captured verification, boot, clock, and synchronization test logs referenced by the scripts and investigation notes. Keep this directory in place. |
 
-## State of this machine
+## Key files
 
-Two PHASE 88 racks, both on the patched module, clock-locked through the sync
-cable, 16 analog in and 16 out under one JACK server:
-
-```sh
-grep ICE1712 /proc/asound/cards                  # card 0 = slave, card 1 = master
-scripts/phase88-sync-setup.sh --show             # clock roles straight from the registers
-scripts/phase88-midi-racks.sh --list             # the four MIDI sockets
-jackd -d alsa -d phase88x2 -r 48000 -p 1024      # 16 in / 16 out
-```
-
-## Submission state
-
-Six clean, checkpatch-clean commits are ready (`analysis/series/`), and one
-RFC commit with the bring-up debug controls stays out of the series.  Nothing
-has been sent to alsa-devel/kernel-dev yet - see the guide, section 10.
+| file | contents |
+|---|---|
+| `install/etc/asound.conf` | Optional ALSA device definitions for using two PHASE 88 cards under one JACK server. |
+| `install/etc/default/phase88` | Card clock-master/slave roles and front-input policy for the mixer service. |
+| `install/etc/systemd/system/phase88-audio.service` | Boot-time module and mixer policy service. |
+| `install/etc/kernel/postinst.d/phase88-oot` | Debian kernel post-install hook that rebuilds and installs the out-of-tree module when headers are available. |
+| `install/modules/` | Compressed module builds for the custom 6.18.55 kernel and Debian 6.12.111, plus module metadata and an out-of-tree Makefile example. |
+| `scripts/phase88-module-install.sh` | Builds and installs `module-kit/` for a selected kernel version, then verifies module resolution. |
+| `scripts/phase88-install-policy.sh` | Installs the policy files from `install/etc/` and can install a supplied module. |
+| `scripts/phase88-verify.sh` | Runs the hardware/driver verification checks; see `scripts/README.md` for invocation and prerequisites. |
+| `upstream/alt-single-switch/series/` | Recommended mail-form patch series. The alternative `upstream/series/` has four Line/Mic controls instead of one. |
+| `analysis/0001-RFC-DO-NOT-SUBMIT-ASoC-ice1712-bring-up-controls-for.patch` | Bring-up/debug-controls patch; it is diagnostic material, not part of either six-patch series. |
