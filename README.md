@@ -23,18 +23,3 @@ troubleshooting.
 | `driver/` | Windows and Mac OS 9 vendor driver and control-panel references used during reverse engineering. [`README.md`](driver/README.md) describes the relevant files and findings. These are reference materials, not Linux driver code. |
 | `kernel/` | `linux-6.18.55.tar.xz`, the kernel source tarball used by the custom-kernel work. The extracted 25 GB build tree was removed; see [`archive/README.md`](archive/README.md) for restoration instructions. |
 | `logs/` | Captured verification, boot, clock, and synchronization test logs referenced by the scripts and investigation notes. Keep this directory in place. |
-
-## Key files
-
-| file | contents |
-|---|---|
-| `install/etc/asound.conf` | Optional ALSA device definitions for using two PHASE 88 cards under one JACK server. |
-| `install/etc/default/phase88` | Card clock-master/slave roles and front-input policy for the mixer service. |
-| `install/etc/systemd/system/phase88-audio.service` | Boot-time module and mixer policy service. |
-| `install/etc/kernel/postinst.d/phase88-oot` | Debian kernel post-install hook that rebuilds and installs the out-of-tree module when headers are available. |
-| `install/modules/` | Compressed module builds for the custom 6.18.55 kernel and Debian 6.12.111, plus module metadata and an out-of-tree Makefile example. |
-| `scripts/phase88-module-install.sh` | Builds and installs `module-kit/` for a selected kernel version, then verifies module resolution. |
-| `scripts/phase88-install-policy.sh` | Installs the policy files from `install/etc/` and can install a supplied module. |
-| `scripts/phase88-verify.sh` | Runs the hardware/driver verification checks; see `scripts/README.md` for invocation and prerequisites. |
-| `upstream/alt-single-switch/series/` | Recommended mail-form patch series. The alternative `upstream/series/` has four Line/Mic controls instead of one. |
-| `analysis/0001-RFC-DO-NOT-SUBMIT-ASoC-ice1712-bring-up-controls-for.patch` | Bring-up/debug-controls patch; it is diagnostic material, not part of either six-patch series. |

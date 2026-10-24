@@ -1,4 +1,5 @@
-# big, third-party or regenerated material - not part of the work product
+# Kernel sources and archives are third-party/generated material; keep them out
+# of git (including extracted versioned source trees such as linux-6.18.58).
 /kernel/
 # driver/ is vendor binaries (9 M) - only its provenance notes are tracked, so
 # the pattern must not exclude the directory itself
