@@ -1,0 +1,42 @@
+From 0ca487765aa3086dfe8bd03bacdbf8a6fd414e48 Mon Sep 17 00:00:00 2001
+From: Davide Gironi <davide.gironi@gmail.com>
+Date: Tue, 13 Oct 2026 17:20:42 +0200
+Subject: [PATCH 2/6] ASoC: ice1712: guard consumer capture against a missing
+ AC'97 codec
+
+snd_ice1712_ac97_mixer() only warns when the AC'97 codec does not answer
+and leaves ice->ac97 NULL, but the consumer capture ops dereference it
+unconditionally, so opening such a stream kills the kernel:
+
+  BUG: kernel NULL pointer dereference, address: 00000000000000ac
+  RIP: 0010:snd_ice1712_capture_open+0x98/0xd0 [snd_ice1712]
+   snd_pcm_open_substream+0x585/0x900 [snd_pcm]
+   snd_pcm_open+0x125/0x260 [snd_pcm]
+   snd_pcm_capture_open+0x44/0x70 [snd_pcm]
+
+This is reachable whenever the AC'97 mixer creation fails - observed on a
+TerraTec PHASE 88 whose EEPROM announces a consumer codec that the board
+does not carry.  Return -ENODEV from open instead; that also keeps
+snd_ice1712_capture_prepare(), which is only reachable through open, away
+from the NULL pointer.
+---
+ sound/pci/ice1712/ice1712.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/sound/pci/ice1712/ice1712.c b/sound/pci/ice1712/ice1712.c
+index e20f6bfcb..c276f7068 100644
+--- a/sound/pci/ice1712/ice1712.c
++++ b/sound/pci/ice1712/ice1712.c
+@@ -768,6 +768,9 @@ static int snd_ice1712_capture_open(struct snd_pcm_substream *substream)
+ 	struct snd_pcm_runtime *runtime = substream->runtime;
+ 	struct snd_ice1712 *ice = snd_pcm_substream_chip(substream);
+ 
++	if (!ice->ac97)
++		return -ENODEV;
++
+ 	ice->capture_con_substream = substream;
+ 	runtime->hw = snd_ice1712_capture;
+ 	runtime->hw.rates = ice->ac97->rates[AC97_RATES_ADC];
+-- 
+2.47.3
+

@@ -1,0 +1,11 @@
+#!/bin/sh
+
+##
+# Start Phase88
+##
+
+. /etc/rc.common
+
+ConsoleMessage "Starting Phase88"
+
+"/Bin/PHASE88RestoreSettings"

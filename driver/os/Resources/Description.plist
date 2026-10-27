@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>IFPkgDescriptionDeleteWarning</key>
+	<string>Removing this package will remove the drivers for TerraTec Phase 88.</string>
+	<key>IFPkgDescriptionDescription</key>
+	<string>Device Drivers (CoreAudio and MIDI) for TerraTec Phase 88.</string>
+	<key>IFPkgDescriptionTitle</key>
+	<string>PHASE88_1.0.1b3</string>
+	<key>IFPkgDescriptionVersion</key>
+	<string>1.0.1b3</string>
+</dict>
+</plist>

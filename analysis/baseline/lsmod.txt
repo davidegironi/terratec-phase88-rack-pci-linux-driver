@@ -1,0 +1,97 @@
+Module                  Size  Used by
+rfkill                 45056  1
+qrtr                   57344  2
+coretemp               16384  0
+kvm_intel             323584  0
+snd_hda_codec_atihdmi    16384  1
+kvm                  1437696  1 kvm_intel
+snd_hda_codec_hdmi     61440  1 snd_hda_codec_atihdmi
+snd_hda_intel          61440  0
+snd_ice1712           106496  0
+snd_hda_codec         217088  3 snd_hda_codec_hdmi,snd_hda_intel,snd_hda_codec_atihdmi
+snd_cs8427             20480  1 snd_ice1712
+snd_i2c                16384  2 snd_cs8427,snd_ice1712
+snd_ice17xx_ak4xxx     12288  1 snd_ice1712
+snd_hda_core          147456  4 snd_hda_codec_hdmi,snd_hda_intel,snd_hda_codec,snd_hda_codec_atihdmi
+snd_ak4xxx_adda        20480  2 snd_ice1712,snd_ice17xx_ak4xxx
+snd_ac97_codec        188416  1 snd_ice1712
+snd_intel_dspcfg       45056  1 snd_hda_intel
+ac97_bus               12288  1 snd_ac97_codec
+snd_mpu401_uart        16384  1 snd_ice1712
+snd_intel_sdw_acpi     16384  1 snd_intel_dspcfg
+snd_rawmidi            53248  1 snd_mpu401_uart
+snd_hwdep              24576  1 snd_hda_codec
+snd_seq_device         16384  1 snd_rawmidi
+snd_pcm               196608  6 snd_hda_codec_hdmi,snd_hda_intel,snd_hda_codec,snd_ice1712,snd_ac97_codec,snd_hda_core
+binfmt_misc            28672  1
+snd_timer              53248  1 snd_pcm
+snd                   155648  14 snd_ak4xxx_adda,snd_cs8427,snd_seq_device,snd_hda_codec_hdmi,snd_hwdep,snd_hda_intel,snd_hda_codec,snd_timer,snd_ice1712,snd_ac97_codec,snd_i2c,snd_mpu401_uart,snd_pcm,snd_rawmidi
+irqbypass              16384  1 kvm
+pcspkr                 12288  0
+soundcore              16384  1 snd
+evdev                  32768  10
+sg                     45056  0
+parport_pc             40960  1
+ppdev                  24576  0
+lp                     24576  0
+configfs               69632  1
+parport                81920  3 parport_pc,lp,ppdev
+efi_pstore             12288  0
+nfnetlink              20480  1
+autofs4                57344  2
+ext4                 1150976  1
+mbcache                20480  1 ext4
+jbd2                  192512  1 ext4
+amdgpu              14770176  0
+drm_buddy              12288  1 amdgpu
+amdxcp                 12288  1 amdgpu
+drm_panel_backlight_quirks    12288  1 amdgpu
+gpu_sched              69632  1 amdgpu
+crc16                  12288  2 amdgpu,ext4
+radeon               1957888  12
+uas                    32768  0
+usb_storage            90112  1 uas
+drm_ttm_helper         16384  2 amdgpu,radeon
+ttm                   122880  3 amdgpu,radeon,drm_ttm_helper
+video                  81920  2 amdgpu,radeon
+wmi                    28672  1 video
+drm_exec               12288  2 amdgpu,radeon
+i2c_algo_bit           16384  2 amdgpu,radeon
+drm_suballoc_helper    16384  2 amdgpu,radeon
+drm_display_helper    286720  2 amdgpu,radeon
+cec                    73728  2 drm_display_helper,amdgpu
+hid_generic            12288  0
+usbhid                 77824  0
+rc_core                73728  1 cec
+drm_client_lib         12288  2 amdgpu,radeon
+hid                   266240  2 usbhid,hid_generic
+drm_kms_helper        262144  5 drm_display_helper,amdgpu,radeon,drm_ttm_helper,drm_client_lib
+sr_mod                 28672  0
+sd_mod                 81920  2
+cdrom                  81920  1 sr_mod
+ata_generic            12288  0
+drm                   823296  18 gpu_sched,drm_panel_backlight_quirks,drm_kms_helper,drm_exec,drm_suballoc_helper,drm_display_helper,drm_buddy,amdgpu,radeon,drm_ttm_helper,drm_client_lib,ttm,amdxcp
+ata_piix               45056  2
+libata                466944  2 ata_piix,ata_generic
+uhci_hcd               61440  0
+psmouse               217088  0
+ehci_pci               16384  0
+r8169                 143360  0
+ehci_hcd              110592  1 ehci_pci
+scsi_mod              323584  6 sd_mod,usb_storage,uas,libata,sg,sr_mod
+usbcore               417792  6 ehci_pci,usbhid,usb_storage,ehci_hcd,uas,uhci_hcd
+realtek                53248  1
+iTCO_wdt               12288  0
+mdio_devres            12288  1 r8169
+intel_pmc_bxt          16384  1 iTCO_wdt
+iTCO_vendor_support    12288  1 iTCO_wdt
+watchdog               53248  1 iTCO_wdt
+libphy                184320  3 r8169,mdio_devres,realtek
+i2c_i801               32768  0
+serio_raw              16384  0
+i2c_smbus              20480  1 i2c_i801
+lpc_ich                28672  0
+scsi_common            16384  7 scsi_mod,sd_mod,usb_storage,uas,libata,sg,sr_mod
+mdio_bus               65536  3 r8169,libphy,realtek
+usb_common             16384  3 usbcore,ehci_hcd,uhci_hcd
+button                 24576  0

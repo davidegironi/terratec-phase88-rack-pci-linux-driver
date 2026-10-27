@@ -1,0 +1,4 @@
+﻿/* Localized versions of Info.plist keys */
+
+CFBundleName = "TerraEWSEWXDMXMidiPlugin";
+CFBundleGetInfoString = "TerraEWSEWXDMXMidiPlugin version 1.1.0, Copyright 2002 Terratec Electronic GmbH.";

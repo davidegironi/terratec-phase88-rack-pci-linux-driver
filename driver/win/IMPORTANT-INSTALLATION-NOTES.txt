@@ -1,0 +1,19 @@
+Dear TerraTec customer,
+
+before installing the current drivers 5.51 please run the attached file: "V549Remove.exe"
+This makes sure your system will be cleaned up from old driver versions.
+
+Thanks for your understanding
+
+Your TerraTec Producer Team
+
+
+
+
+Lieber TerraTec Kunde,
+
+vor der Installation der aktuell vorliegende Treiber 5.51, führen Sie bitte die beiliegende Datei "V549Remove.exe" aus. Dadurch wird sichergestellt, dass alte Treiberdateien von Ihrem System gelöscht werden.
+
+Vielen Dank für Ihr Vertsändniss.
+
+Ihr TerraTec Producer Team
