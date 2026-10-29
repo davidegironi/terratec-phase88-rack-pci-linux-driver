@@ -7,12 +7,16 @@
 # Every call that touches ALSA is wrapped in timeout(1) - a blocked ALSA
 # call turns into an unreapable D-state task on this box.
 set -u
-TREE=/root/terratec/kernel/linux-6.18.55
-KO=$TREE/sound/pci/ice1712/snd-ice1712.ko
-LOGDIR=/root/terratec/logs
+SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
+REPO_ROOT=$(dirname "$SCRIPT_DIR")
+LOGDIR=${PHASE88_LOG_DIR:-$REPO_ROOT/logs}
 LOG=$LOGDIR/verify-$(date +%Y%m%d-%H%M%S).log
-mkdir -p "$LOGDIR"
-exec > >(tee "$LOG") 2>&1
+if [ "${PHASE88_NO_FILE_LOG:-0}" = 1 ]; then
+	LOG=""
+else
+	mkdir -p "$LOGDIR"
+	exec > >(tee "$LOG") 2>&1
+fi
 
 T() { timeout -s KILL "${TMO:-15}" "$@"; }
 ok()   { echo "  [ok]   $*"; }
@@ -46,7 +50,7 @@ fi
 # only look at dmesg from the point where the patched module was loaded on
 # (see the .dmesg-mark written by phase88-cycle.sh), the messages before it
 # belong to the module we unloaded
-MARK=$(cat /root/terratec/logs/.dmesg-mark 2>/dev/null)
+MARK=$(cat "$LOGDIR/.dmesg-mark" 2>/dev/null)
 if [ -n "$MARK" ]; then
 	DM=$(T dmesg | awk -v m="$MARK" 'index($0,m){f=1} f')
 else
@@ -158,6 +162,6 @@ else
 fi
 
 echo
-echo "log: $LOG"
+[ -n "$LOG" ] && echo "log: $LOG"
 [ $FAILED -eq 0 ] && echo "### RESULT: all checks passed" || echo "### RESULT: $FAILED check(s) FAILED"
 exit $FAILED

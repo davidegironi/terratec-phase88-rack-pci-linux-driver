@@ -58,31 +58,12 @@ extern struct snd_ice1712_card_info snd_ice1712_ews_cards[];
 #define ICE1712_EWS88MT_OUTPUT_SENSE	0x40	/* mask */
 #define ICE1712_EWS88D_PCF_ADDR		(0x40>>1)
 
-/*
- * TerraTec PHASE 88 configuration definitions
- *
- * The PHASE 88 is derived from the EWS88MT but it does not carry the two
- * PCF8574 expanders at 0x23/0x24.  The AK4524 chip selects are driven by a
- * 16-bit output expander answering at the 8-bit address 0x42, programmed
- * with a two byte transfer: an address/page byte followed by the data byte
- * holding the chip select bits (0-3, active low) and the board flags.
- * This matches the "type 8" code path of the Terratec Windows driver for
- * subsystem 0x1151 (PHASE 88) and 0xf151 (PHASE 88 master).
- */
-#define ICE1712_PHASE88_OUTPUT_ADDR	(0x42>>1)
-#define ICE1712_PHASE88_OUTPUT_PAGE	0x01	/* first byte of the transfer */
-#define ICE1712_PHASE88_OUTPUT_INIT	0x20	/* flags kept asserted (bits 4-7) */
-
-/*
- * The same expander has a second register that the Terratec drivers clear
- * once while they initialise a "type 8" board ({0x03, 0x00} written to
- * 8-bit 0x42).  The latch of the expander is undefined after power on and
- * the AK4524 codecs stay silent when it is left alone, so it has to be
- * written before the codecs are set up.  Its four upper bits select either
- * the line input or the microphone input of the four codec pairs.
- */
-#define ICE1712_PHASE88_INPUT_PAGE	0x03
-#define ICE1712_PHASE88_INPUT_INIT	0x00
+/* TerraTec PHASE 88 configuration definitions */
+#define ICE1712_PHASE88_OUTPUT_ADDR	(0x42 >> 1)
+#define ICE1712_PHASE88_OUTPUT_PAGE	0x01	/* output register */
+#define ICE1712_PHASE88_OUTPUT_INIT	0x20	/* initial output state */
+#define ICE1712_PHASE88_INPUT_PAGE	0x03	/* input register */
+#define ICE1712_PHASE88_INPUT_INIT	0x00	/* line inputs */
 
 /* TerraTec DMX 6Fire configuration definitions */
 #define ICE1712_6FIRE_AK4524_CS_MASK	0x07	/* AK4524 chip select #1-#3 */

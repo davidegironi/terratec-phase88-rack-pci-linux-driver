@@ -23,8 +23,8 @@ install/
 ## Fastest path: script
 
 ```sh
-/root/terratec/scripts/phase88-install-policy.sh                 # policy only
-/root/terratec/scripts/phase88-install-policy.sh path/to/snd-ice1712.ko   # + module
+sudo scripts/phase88-install-policy.sh                 # policy only
+sudo scripts/phase88-install-policy.sh path/to/snd-ice1712.ko   # + module
 ```
 
 It copies `install/etc/*` to `/etc`, installs the module into
@@ -46,6 +46,21 @@ with `phase88x2` when two PHASE 88 cards are detected, or `hw:Phase88` when
 only one is present. It starts immediately if the target user is already logged
 in, otherwise at their next login. Disable QJackCtl's own JACK auto-start to
 avoid competing servers. Stop/disable it from that user's session with `systemctl --user disable --now phase88-jack.service`.
+
+For JACK plus PulseAudio bridging, use the combined installer from the repository
+root:
+
+```sh
+sudo scripts/phase88-install-jackpulse.sh
+```
+
+Run it from the non-root desktop user's session, or pass that username when
+invoking it as root: `scripts/phase88-install-jackpulse.sh USER`. It installs
+JACK/PulseAudio packages and per-user services, then sets the stereo
+`phase88_jack_out` and `phase88_jack_in` PulseAudio defaults. It refuses root,
+PipeWire-Pulse, and an enabled root JACK service; disable any old root JACK unit
+first. If PulseAudio is restarted, reload the bridge with
+`systemctl --user restart phase88-pulse-jack.service` as the desktop user.
 
 ## By hand
 
@@ -100,8 +115,8 @@ if headers are missing it writes a warning and the exact command to fix it to
 install -m 0755 install/etc/kernel/postinst.d/phase88-oot /etc/kernel/postinst.d/
 ```
 
-On this box it is installed and pointed at this checkout (verified 2026-10-21:
-`/etc/kernel/postinst.d/phase88-oot`, `SCRIPT=/root/terratec/scripts/phase88-module-install.sh`).
+On this box it is installed and pointed at this checkout:
+`/etc/kernel/postinst.d/phase88-oot`, `SCRIPT` resolves to this checkout's `scripts/phase88-install-module.sh`.
 
 ### Does a fresh machine get it automatically?
 
@@ -120,8 +135,8 @@ Three things to know:
 
 * The hook only fires for kernels installed **after** it is in place.  The kernel
   you are booted into still needs the module once - via the `.ko` argument above,
-  or `phase88-module-install.sh`.
-* Rebuilding on that machine needs `module-kit/` **and** `scripts/phase88-module-install.sh`
+  or `phase88-install-module.sh`.
+* Rebuilding on that machine needs `module-kit/` **and** `scripts/phase88-install-module.sh`
   to stay present (the hook calls the script, the script reads the kit).  Keep the
   212 KB kit; it is not a temporary build directory.
 * `/etc/kernel/postinst.d/` is the **Debian** mechanism (dpkg `linux-image-*`
@@ -129,14 +144,14 @@ Three things to know:
   (`/etc/pacman.d/hooks/*.hook`, `After = transaction`, same script inside);
   Fedora/RHEL runs nothing there, so use DKMS or call the script from a
   `dnf` plugin/post-transaction action.  On any of them the manual one-liner
-  always works: `phase88-module-install.sh --kver=$(uname -r)`.
+  always works: `phase88-install-module.sh --kver=$(uname -r)`.
 
 Do it by hand, any time:
 
 ```sh
-/root/terratec/scripts/phase88-module-install.sh --check      # what is installed
-/root/terratec/scripts/phase88-module-install.sh              # rebuild + install + depmod
-/root/terratec/scripts/phase88-module-install.sh --reload     # also load it now
+scripts/phase88-install-module.sh --check      # what is installed
+scripts/phase88-install-module.sh              # rebuild + install + depmod
+scripts/phase88-install-module.sh --reload     # also load it now
 ```
 
 Why `updates/` wins: depmod orders directories by priority, and for a given

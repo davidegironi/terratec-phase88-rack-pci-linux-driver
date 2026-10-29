@@ -1,4 +1,4 @@
-# TerraTec PHASE 88 settings, read by /root/terratec/scripts/phase88-mixer.sh
+# TerraTec PHASE 88 settings, read by the phase88-mixer.sh script installed with this checkout
 # (which phase88-audio.service runs at boot) and by phase88-sync-setup.sh.
 #
 # Word clock master/slave over the sync cable.

@@ -8,9 +8,11 @@
 # reference forever (that is what wedged the sound core on 2026-10-12, see
 # analysis/README.md).  `rmmod -f` is never used.
 set -u
-TREE=/root/terratec/kernel/linux-6.18.55
+SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
+REPO_ROOT=$(dirname "$SCRIPT_DIR")
+TREE=${TREE:-$REPO_ROOT/kernel/linux-6.18.58}
 KO=$TREE/sound/pci/ice1712/snd-ice1712.ko
-LOGDIR=/root/terratec/logs
+LOGDIR=${PHASE88_LOG_DIR:-$REPO_ROOT/logs}
 LOG=$LOGDIR/$(date +%Y%m%d-%H%M%S).log
 mkdir -p "$LOGDIR"
 
@@ -43,7 +45,7 @@ echo "module refcount: $(awk '/^snd_ice1712 /{print $3, $4}' /proc/modules)" | t
 
 # watermark: verify.sh only looks at dmesg from here on, so the messages of
 # the module we just unloaded are not counted against the patched one
-dmesg | tail -1 > /root/terratec/logs/.dmesg-mark
+dmesg | tail -1 > "$LOGDIR/.dmesg-mark"
 echo "== load $* =="                                      | tee -a "$LOG"
 insmod "$KO" "$@" 2>&1                                    | tee -a "$LOG"
 sleep 1

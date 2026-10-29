@@ -5,12 +5,13 @@ Everything a PHASE 88 (Envy24 / ICE1712, PCI id `1412:1712`, subsystem
 which driver to use, what to set at boot, how to run one or two cards in
 JACK/QJackCtl/Reaper, and how to test the parts that need a cable.
 
-This machine: two PHASE 88 racks, kernel 6.18.55 built from
-`/root/terratec/kernel/linux-6.18.55`, branch `phase88`, both cards working
-(8 analog in + 8 analog out each, front mic input, clock slave locked to the
-master through the sync cable).  Card 0 = PCI `0000:03:01.0` = new board =
-clock **slave**; card 1 = PCI `0000:03:02.0` = original board and rack =
-clock **master**.
+This machine: two PHASE 88 racks, source tree under
+`/root/terratec-phase88-rack-pci-linux-driver/kernel/linux-6.18.58`; testing
+uses the patched out-of-tree module on Debian 6.12.113+deb13-amd64; both cards
+work (8 analog in + 8 analog out each, front mic input, clock slave locked to
+the master through the sync cable). ALSA card 1 = PCI `0000:03:01.0` = new
+board = clock **slave**; ALSA card 2 = PCI `0000:03:02.0` = original board
+and rack = clock **master**. HDMI is currently card 0.
 
 ---
 
@@ -55,23 +56,22 @@ f15b12d5a ASoC: ice1712: add the PHASE 88 Line/Mic input switches
 9b45794e6 RFC/DO-NOT-SUBMIT: bring-up controls for the PHASE 88 expander   <- drop this one
 ```
 
-Patch files: `/root/terratec/analysis/series/0001..0006-*.patch` (the clean
-set), combined `/root/terratec/analysis/phase88-fix.patch` (313 lines),
-`/root/terratec/analysis/0001-RFC-DO-NOT-SUBMIT-*.patch`.  Only three files are
-touched: `sound/pci/ice1712/{ice1712.c,ews.c,ews.h}`.  `checkpatch.pl` is clean
-(0 errors, 0 warnings); the only thing missing for `alsa-devel` is a
-`Signed-off-by:` line, which is deliberate until the work is finished.
+The original six-patch v1 series is historical. The revised v2 series is in
+`submission/v2/`: an early EEPROM callback and DMX6Fire refactor followed by
+PHASE 88-specific changes. The combined diff is
+`submission/v2/phase88-v2-combined.patch`; it touches four files:
+`sound/pci/ice1712/{ice1712.c,ice1712.h,ews.c,ews.h}`. Checkpatch reports no
+style warnings; add the contributor's own `Signed-off-by:` trailer to each
+patch before sending. RFC debug controls are excluded.
 
 ## 2. Does this need a custom kernel?
 
-**No.**  The patch touches only `sound/pci/ice1712/{ice1712.c,ews.c,ews.h}`, no
-exported headers and no Kbuild plumbing, so the module can be rebuilt
-out-of-tree against the `linux-headers` package of whatever kernel you boot and
-dropped into `/lib/modules/$(uname -r)/updates/`, where depmod prefers it over
-the distro copy.  Full details, and the run that proves it, are in
-`/root/terratec/install/debian-stock-kernel.md` (the file next to this guide).  The
-short version, measured here
-on 2026-10-18 against Debian's stock `6.12.111+deb13-amd64`:
+**No.** The patch touches the ICE1712 core and its internal card header plus
+EWS board code, but no exported headers or Kbuild plumbing. The module can be
+rebuilt out-of-tree against the `linux-headers` package of whatever kernel you
+boot and dropped into `/lib/modules/$(uname -r)/updates/`, where depmod prefers
+it over the distro copy. Full details are in `debian-stock-kernel.md` (next to
+this guide). The short version, measured on Debian `6.12.113+deb13-amd64`:
 
 ```
 # note the versioned package name: plain 'apt-get install linux-source' fails
@@ -99,7 +99,7 @@ so the entire patched driver is **8 source files, 212 KB**, in `../module-kit/`
 with a 2-line Makefile.  It compiles against headers, not against a built tree:
 
 ```sh
-/root/terratec/scripts/phase88-module-install.sh          # 10 s build + install + depmod
+scripts/phase88-install-module.sh          # build + install + depmod
 ```
 
 Measured: 10 s against `linux-headers-6.12.111+deb13-amd64` (6.5 s in a copy of
@@ -187,7 +187,7 @@ Here that is one oneshot unit:
 ```
 /etc/systemd/system/phase88-audio.service
   ExecStart=/usr/sbin/modprobe snd_ice1712
-  ExecStart=/root/terratec/scripts/phase88-mixer.sh
+  ExecStart=/root/terratec-phase88-rack-pci-linux-driver/scripts/phase88-mixer.sh
 ```
 
 `phase88-mixer.sh` (the actual policy) does, for **every** ICE1712 card it
@@ -220,6 +220,18 @@ per-user unit with `sudo scripts/phase88-install-jackservice.sh`. It selects
 `phase88-audio.service`, which only configures the driver and mixer. Disable
 QJackCtl's automatic JACK startup if using this service. Stop/disable the user
 unit with `systemctl --user disable --now phase88-jack.service`.
+
+To install JACK **and** PulseAudio bridging for a non-root desktop account, run
+`sudo scripts/phase88-install-jackpulse.sh` from that account. From a root shell,
+pass the desktop username explicitly: `scripts/phase88-install-jackpulse.sh USER`.
+The script installs the JACK/PulseAudio packages and per-user services, then
+creates stereo PulseAudio defaults `phase88_jack_out` and `phase88_jack_in`.
+It refuses root and PipeWire-Pulse; both JACK and PulseAudio must run in the same
+regular user's desktop session. If JACK was previously enabled for root, disable
+that root unit first with `systemctl --user disable --now phase88-jack.service`.
+Disable QJackCtl autostart to avoid a second JACK server. If PulseAudio is
+restarted later, reload its JACK modules with
+`systemctl --user restart phase88-pulse-jack.service` as that desktop user.
 
 ## 5. Is any of this different with one card versus two?
 
@@ -347,7 +359,7 @@ MIDI in JACK needs a backend: jackd's `-X seq|raw` option.  `-X seq` gives one
 JACK MIDI port per ALSA sequencer client (so one per card here), `-X raw` one
 per raw ALSA device.  Without `-X` you get audio only.
 
-Handy scripts (all in `/root/terratec/scripts/`):
+Handy scripts (from the checkout root, in `scripts/`):
 
 | script | what it does |
 |---|---|
@@ -409,11 +421,11 @@ One cable is enough - `phase88-midi-racks.sh` walks the four sockets and asks
 you to move it:
 
 ```
-/root/terratec/scripts/phase88-midi-racks.sh            # prompts per socket
-/root/terratec/scripts/phase88-midi-racks.sh --yes      # all four already looped
-/root/terratec/scripts/phase88-midi-racks.sh --list     # socket + card map
-/root/terratec/scripts/phase88-midi-racks.sh --probe 0  # every send/listen combo on card 0
-/root/terratec/scripts/phase88-midi-racks.sh --identify 0   # 440 Hz on its out 1/2
+scripts/phase88-midi-racks.sh            # prompts per socket
+scripts/phase88-midi-racks.sh --yes      # all four already looped
+scripts/phase88-midi-racks.sh --list     # socket + card map
+scripts/phase88-midi-racks.sh --probe 1  # every send/listen combo on card 1
+scripts/phase88-midi-racks.sh --identify 1   # 440 Hz on its out 1/2
 ```
 
 `--identify` is how you find out which rack is which card: it plays a tone on
@@ -458,7 +470,7 @@ card, matching the two sockets.  `aconnect -l` shows what the sequencer sees.
 | what you see | what it means |
 |---|---|
 | `AK4524 chip select failed` in `dmesg` even though the card works | stale messages from the distro module, which is tried before the patched one wins.  Check the timestamps (`journalctl -k -b`) — what matters is the state after `TerraTec Phase88 at 0x..., irq ...` |
-| card worked yesterday, `AK4524 chip select failed` is back and the capture is dead | the running kernel has no patched module: `apt upgrade` installed a new kernel and `/lib/modules/<old>/updates/snd-ice1712.ko` belongs to the old one. `phase88-module-install.sh --check` says it in one line; `phase88-module-install.sh --kver=$(uname -r)` (or the `postinst.d` hook, if installed) fixes it in ~10 s + depmod |
+| card worked yesterday, `AK4524 chip select failed` is back and the capture is dead | the running kernel has no patched module: `apt upgrade` installed a new kernel and `/lib/modules/<old>/updates/snd-ice1712.ko` belongs to the old one. `phase88-install-module.sh --check` says it in one line; `phase88-install-module.sh --kver=$(uname -r)` (or the `postinst.d` hook, if installed) fixes it in ~10 s + depmod |
 | QJackCtl does not offer `phase88x2` | its device list is a probe of `hw:` cards; type the name into 'ALSA Device Name' |
 | `Invalid CTL phase88x2` | fixed by the `ctl.` alias in `/etc/asound.conf`; harmless either way |
 | xrun counter runs away, CPU high, audio still fine | a **dead client** still registered (any tool that exits without `jack_client_close()`).  One of my test clients did this 12103 times at 35 % CPU.  Restart the server; the hardware has nothing to do with it |
@@ -506,6 +518,6 @@ silence it; not applied because that is the user's card-reader slot.
   it is a slightly bigger change than the quirk itself.
 * The rear socket of the **second** rack has not been tested yet - the driver
   path is identical, but hardware is only proven where a cable was moved.
-* Nothing is submitted upstream yet: the 6-commit series plus
-  `/root/terratec/analysis/README.md` are kept submission-ready (checkpatch
-  clean) and the RFC debug commit stays out.
+* The v1 series was submitted; the revised v2 patch series and cover letter
+  are in `submission/v2/`. Add the contributor's own sign-off to each patch
+  before sending. The RFC debug controls remain excluded.

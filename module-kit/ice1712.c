@@ -2286,52 +2286,28 @@ static int snd_ice1712_read_eeprom(struct snd_ice1712 *ice,
 
 
 
+static int snd_ice1712_init_eeprom(struct snd_ice1712 *ice)
+{
+	const struct snd_ice1712_card_info * const *tbl, *c;
+
+	for (tbl = card_tables; *tbl; tbl++) {
+		for (c = *tbl; c->subvendor; c++) {
+			if (c->subvendor != ice->eeprom.subvendor)
+				continue;
+			if (c->eeprom_init)
+				return c->eeprom_init(ice);
+			return 0;
+		}
+	}
+	return 0;
+}
+
 static int snd_ice1712_chip_init(struct snd_ice1712 *ice)
 {
 	outb(ICE1712_RESET | ICE1712_NATIVE, ICEREG(ice, CONTROL));
 	udelay(200);
 	outb(ICE1712_NATIVE, ICEREG(ice, CONTROL));
 	udelay(200);
-	if (ice->eeprom.subvendor == ICE1712_SUBDEVICE_DMX6FIRE &&
-	    !ice->dxr_enable) {
-		/*  Set eeprom value to limit active ADCs and DACs to 6;
-		 *  Also disable AC97 as no hardware in standard 6fire card/box
-		 *  Note: DXR extensions are not currently supported
-		 */
-		ice->eeprom.data[ICE_EEP1_CODEC] = 0x3a;
-	} else if (ice->eeprom.subvendor == ICE1712_SUBDEVICE_PHASE88) {
-		/*
-		 * The EEPROM of the PHASE 88 advertises a consumer AC'97
-		 * codec, but the board does not carry one - the AC'97 link
-		 * does not answer even after a cold reset (every register
-		 * reads back as 0xffff).  All converters of this card are the
-		 * AKM codecs on the multitrack I2S interface, and the original
-		 * Terratec driver does not touch the AC'97 link either.
-		 * Without this quirk the probe wastes two seconds in the
-		 * AC'97 reset and creates consumer PCM devices that have no
-		 * codec behind them.
-		 */
-		ice->eeprom.data[ICE_EEP1_CODEC] |= ICE1712_CFG_NO_CON_AC97;
-		/*
-		 * The rack has two MIDI interfaces - one on the front panel, one
-		 * on the rear - but the EEPROM advertises only one UART, so
-		 * without this the rear connector stays dead.  Terratec's own
-		 * driver exposes both: "[PHASE88.Interface.Midi1]" and
-		 * "[PHASE88.Interface.Midi2]" in ews88wdm.inf, "PHASE88 MIDI Port
-		 * 1/2", the changelog naming the second one "Mic28 Extensions
-		 * (Midi 2)".  Both UARTs are inside the Envy24, so claiming the
-		 * second one is only a matter of setting the bit the EEPROM
-		 * should have carried.
-		 *
-		 * Verified on a PHASE 88 rack: with a loopback cable in the rear
-		 * connector, a SysEx frame written to the second UART came back
-		 * on it byte-exactly, and the first UART (front connector) kept
-		 * working as before.  With the second UART enabled and both ports
-		 * idle the card raised no interrupt on its IRQ line for 10 s,
-		 * so an unconnected input does not generate traffic.
-		 */
-		ice->eeprom.data[ICE_EEP1_CODEC] |= ICE1712_CFG_2xMPU401;
-	}
 	pci_write_config_byte(ice->pci, 0x60, ice->eeprom.data[ICE_EEP1_CODEC]);
 	pci_write_config_byte(ice->pci, 0x61, ice->eeprom.data[ICE_EEP1_ACLINK]);
 	pci_write_config_byte(ice->pci, 0x62, ice->eeprom.data[ICE_EEP1_I2SID]);
@@ -2538,8 +2514,12 @@ static int snd_ice1712_create(struct snd_card *card,
 	card->sync_irq = ice->irq;
 	card->private_free = snd_ice1712_free;
 
-	if (snd_ice1712_read_eeprom(ice, modelname) < 0)
-		return -EIO;
+	err = snd_ice1712_read_eeprom(ice, modelname);
+	if (err < 0)
+		return err;
+	err = snd_ice1712_init_eeprom(ice);
+	if (err < 0)
+		return err;
 	if (snd_ice1712_chip_init(ice) < 0)
 		return -EIO;
 

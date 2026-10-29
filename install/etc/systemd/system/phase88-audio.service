@@ -8,10 +8,10 @@
 # The patched snd-ice1712.ko is installed in /lib/modules/<kver>/updates/, so
 # udev already loads it automatically (modprobe below is only a guarantee, and
 # it resolves the snd-* dependencies, which a plain insmod would not).
-# See /root/terratec/analysis/README.md for the driver change itself.
+# See the checkout's analysis/README.md for the driver change itself.
 [Unit]
 Description=TerraTec PHASE 88: patched snd_ice1712 driver + mixer defaults
-Documentation=file:/root/terratec/analysis/README.md
+Documentation=file:/root/terratec-phase88-rack-pci-linux-driver/analysis/README.md
 After=systemd-modules-load.service
 Before=sound.target
 
@@ -19,7 +19,7 @@ Before=sound.target
 Type=oneshot
 RemainAfterExit=yes
 ExecStart=/usr/sbin/modprobe snd_ice1712
-ExecStart=/root/terratec/scripts/phase88-mixer.sh
+ExecStart=/root/terratec-phase88-rack-pci-linux-driver/scripts/phase88-mixer.sh
 
 [Install]
 WantedBy=multi-user.target

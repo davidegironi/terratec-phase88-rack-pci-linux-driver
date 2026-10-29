@@ -30,7 +30,7 @@ Build in a copy, so this directory stays clean (`.o`, `.ko`, `Module.symvers`
 litter the module directory):
 
 ```sh
-mkdir -p /tmp/p88b && cp /root/terratec/module-kit/* /tmp/p88b/
+mkdir -p /tmp/p88b && cp module-kit/* /tmp/p88b/
 make -C /lib/modules/$(uname -r)/build M=/tmp/p88b modules -j$(nproc)
 ```
 
@@ -38,20 +38,19 @@ Or use the wrapper, which also installs, runs `depmod` and checks that
 `modprobe` picks the result:
 
 ```sh
-/root/terratec/scripts/phase88-module-install.sh            # running kernel
-/root/terratec/scripts/phase88-module-install.sh --kver=6.12.111+deb13-amd64
-/root/terratec/scripts/phase88-module-install.sh --check    # status only
+scripts/phase88-install-module.sh            # running kernel
+scripts/phase88-install-module.sh --kver=6.12.113+deb13-amd64
+scripts/phase88-install-module.sh --check    # status only
 ```
 
 Measured on this box:
 
 | kernel built against | result |
 |---|---|
-| `6.18.55` (custom, `/lib/modules/6.18.55/build` = the source tree) | 10 s, `md5 8dcc5dac196de1b6ebf319cbe6bf5209`, then **installed and verified**: `phase88-verify.sh` passes on card 0 (clock slave, 48 kHz) and card 1 (master, 44.1/48/96 kHz all RUNNING) |
-| `6.12.111+deb13-amd64` (stock Debian headers) | 10 s, 0 warnings, vermagic matches |
+| `6.12.113+deb13-amd64` (stock Debian headers) | Clean build and reload; `phase88-verify.sh 1` (clock slave, 48 kHz) and `phase88-verify.sh 2` (master, 44.1/48/96 kHz) passed playback/capture DMA checks; no AC'97 errors, oops, or debug controls |
 
-`md5` differs from a build made inside the kernel tree (`6cf98eec...`) because the
-build directory is baked into the object; the source is identical.
+The Linux 6.18.58 source files were also compiled as an external module against
+these running 6.12.113 headers.
 
 ## Provenance - this directory is the source now
 
@@ -60,35 +59,26 @@ tree they came from was **deleted on 2026-10-21** (option A in `../archive/READM
 so the kit is no longer a copy of something else: it is where the driver source
 lives day to day, with the history in `../archive/` and the mail-form patches in
 `../upstream/`.  Get a full tree back with either
-`git clone /root/terratec/archive/phase88-full-history.bundle -b phase88-alt-single`
+`git clone /root/terratec-phase88-rack-pci-linux-driver/archive/phase88-full-history.bundle -b phase88-alt-single`
 or the tarball + `git am` (recipe in `../archive/README.md`).
 
-### This kit is the diagnostic build, not the submission build
+### Installable kit and diagnostic controls
 
-`2e145dfc9` is the RFC commit **on top of** the six submission commits, so the kit
-carries the bring-up debug controls: +99 lines, all in `ews.c` (`ews.h` and
-`ice1712.c` are byte-identical to the submission set, diffed 2026-10-21).  Tell
-the two builds apart without opening the source:
+This kit is the installable PHASE 88 driver source. The RFC write-only
+expander/codec-init controls have been removed: they can modify hardware state
+and are not appropriate for a normal installation. A previously loaded module
+continues to expose them until the driver is safely reloaded or the machine is
+rebooted.
 
-```sh
-strings snd-ice1712.ko | grep -c 'Phase88 Debug Expander'   # 2 = this kit, 0 = submission set
-strings snd-ice1712.ko | grep -c 'Line/Mic 7/8 Switch'      # 1 in both
-amixer -c 0 contents | grep -c '^numid'                     # 84 = this kit, 81 = submission set
-```
-
-The prebuilt modules in `../install/modules/` are the same diagnostic build: the
-clock work and the expander measurements needed the two raw register controls, and
-on this machine the sound core must not be reloaded casually (an oops inside
-`snd_pcm_open()` once wedged `register_mutex` until reboot).  Those three extra
-controls are `iface=CARD`, do not touch audio and are not part of what gets sent
-to the list.
-
-To build **exactly** the submission set (e.g. to double-check that the patch
-applies and compiles on its own):
+Check a built module for the debug controls and the user-facing switch:
 
 ```sh
-tar -xf /root/terratec/kernel/linux-6.18.55.tar.xz
-cd linux-6.18.55 && git init -q . && git add -A && git commit -qm base
-git am /root/terratec/upstream/alt-single-switch/series/000[1-6]-*.patch    # verified clean 2026-10-21
-make -C /lib/modules/$(uname -r)/build M=$PWD/sound/pci/ice1712 modules
+strings snd-ice1712.ko | grep -c 'Phase88 Debug'       # should be 0
+strings snd-ice1712.ko | grep -c 'Line/Mic 7/8 Switch' # should be 1
 ```
+
+`module-kit/ice1712.c` uses `snd_card_unref` for compatibility with the running
+6.12 headers; the corresponding 6.18.58 source uses the newer `snd_card_free`
+cleanup annotation. The PHASE 88 EEPROM callback, capture safety check, and EWS
+controls otherwise match the revised source. The complete v2 patch series is in
+`../submission/v2/`.

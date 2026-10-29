@@ -1367,13 +1367,13 @@ is unaffected (`--check` prints `build dir: MISSING` with the fix hint). Both
 cards still pass `phase88-verify.sh 1` and `phase88-verify.sh 0` -> `### RESULT:
 all checks passed` (card 1 RUNNING 44.1/48/96 kHz, card 0 48 kHz as clock slave).
 
-**New-machine answer, tested rather than asserted:** `phase88-module-install.sh`
+**New-machine answer, tested rather than asserted:** `phase88-install-module.sh`
 used to default `KIT=/root/terratec/module-kit`, which breaks any relocated
 checkout - it now resolves the kit relative to the script
 (`HERE_SCRIPT=$(dirname "$(readlink -f "$0")"); KIT=${KIT:-$(dirname
 "$HERE_SCRIPT")/module-kit}`) with /root/terratec as fallback. Proof: copied
 `scripts/ module-kit install/` to `/tmp/p88copy` and ran
-`phase88-module-install.sh --kver=6.12.111+deb13-amd64 --dry-run` -> `built ok:
+`phase88-install-module.sh --kver=6.12.111+deb13-amd64 --dry-run` -> `built ok:
 6.12.111+deb13-amd64 ... 'Line/Mic 7/8 Switch' present: 1` in **6.5 s**.
 So a fresh machine needs: `build-essential` + `linux-headers-$(uname -r)`, the
 repo (or at least `scripts/` + `install/` + `module-kit/`, which must stay

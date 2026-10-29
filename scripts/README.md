@@ -1,7 +1,7 @@
 # Tools
 
-Run them from anywhere; they use absolute paths internally.  Root, because most
-touch `/proc/asound`, module loading or `/etc`.
+Run them from anywhere; scripts resolve the checkout from their own path. Root,
+because most touch `/proc/asound`, module loading or `/etc`.
 
 Two rules the whole folder obeys, learned the hard way on this box:
 
@@ -25,6 +25,7 @@ explicitly instead of looking broken.
 | `phase88-sync-setup.sh [--show\|--off\|master slave]` | clock master/slave via 'Multi Track Internal Clock'. Refuses while a stream runs, because `snd_ice1712_set_pro_rate()` (ice1712.c:979) silently drops the write. Reads `/etc/default/phase88`. |
 | `phase88-install-policy.sh [snd-ice1712.ko]` | install `install/etc/*` (and optionally the module, vermagic-checked) on a fresh box. |
 | `phase88-install-jackservice.sh` | install and enable a per-user systemd service that starts JACK at login; chooses `phase88x2` for two cards or `hw:Phase88` for one. Run with `sudo`; service runs as the logged-in desktop user. |
+| `phase88-install-jackpulse.sh [desktop-user]` | install JACK plus PulseAudio JACK sink/source modules and user services; refuses root and PipeWire-Pulse setups. Run from the desktop user with `sudo`, or as root with the desktop username. |
 | `phase88-verify.sh [card]` | the full check: probe, PCM list, controls, playback at 44.1/48/96 kHz, capture, no oops. Prints `### RESULT: all checks passed`. Pass the card number bare (`phase88-verify.sh 1`, not `-c 1`). Log in `../logs/`. **(ALSA)** |
 | `phase88-cycle.sh` | `rmmod` + `modprobe` + `phase88-verify.sh`, with a dmesg watermark so old errors from the distro module do not fail the run. |
 
@@ -35,9 +36,21 @@ It installs a user unit and helper under the target user's home. It starts JACK
 immediately if that user is already logged in; otherwise it starts at their next
 login. Do not also configure QJackCtl to auto-start a second JACK server.
 
+For JACK plus PulseAudio through the PHASE 88, run
+`sudo scripts/phase88-install-jackpulse.sh` from the target desktop user's
+account. From a root shell, pass the non-root desktop username explicitly:
+`sudo scripts/phase88-install-jackpulse.sh USER`. It installs `jackd2`,
+PulseAudio, and `pulseaudio-module-jack`, then enables per-user JACK and bridge
+services. The bridge creates the stereo PulseAudio sink `phase88_jack_out` and
+source `phase88_jack_in`, sets them as defaults, and connects them to JACK after
+both servers are available. It intentionally refuses root and PipeWire-Pulse;
+use a regular desktop account. If JACK was previously enabled for root, disable
+that root unit first; also disable QJackCtl JACK autostart to avoid a competing
+server. Check with `systemctl --user status phase88-jack.service phase88-pulse-jack.service`, `pactl list short sinks`, and `pactl list short sources`. If PulseAudio is restarted later, reload its bridge modules with `systemctl --user restart phase88-pulse-jack.service`.
+
 | tool | what it does |
 |---|---|
-| `phase88-module-install.sh [--kver=V] [--reload] [--dry-run] [--check]` | build `../module-kit/` (8 files, ~10 s) against `/lib/modules/<V>/build` or `/usr/src/linux-headers-<V>`, back up the old module, install to `/lib/modules/<V>/updates/`, `depmod -a <V>`, then confirm `modprobe --show-depends` picks it. `--reload` also frees `/dev/snd` (stops user pipewire/wireplumber, refuses if a PCM stream is RUNNING), reloads and re-runs the mixer script. `--check` reports installed md5/vermagic, whether it is loaded and what modprobe picks. Takes ~2.5 min because `depmod` is slow here. |
+| `phase88-install-module.sh [--kver=V] [--reload] [--dry-run] [--check]` | build `../module-kit/` (8 files, ~10 s) against `/lib/modules/<V>/build` or `/usr/src/linux-headers-<V>`, back up the old module, install to `/lib/modules/<V>/updates/`, `depmod -a <V>`, then confirm `modprobe --show-depends` picks it. `--reload` also frees `/dev/snd` (stops user pipewire/wireplumber, refuses if a PCM stream is RUNNING), reloads and re-runs the mixer script. `--check` reports installed md5/vermagic, whether it is loaded and what modprobe picks. Takes ~2.5 min because `depmod` is slow here. |
 | `/etc/kernel/postinst.d/phase88-oot` (from `install/etc/kernel/`) | runs that script for every kernel `apt` installs, logs to `/var/log/phase88-kernel-hook.log`, always exits 0 so it can never break a kernel install. |
 
 ## Levels and inputs
@@ -70,11 +83,14 @@ login. Do not also configure QJackCtl to auto-start a second JACK server.
 
 `phase88-sync-test.sh` and `phase88-expander-sweep.py` use the debug controls
 `Phase88 Debug Expander Page 1` / `Page 3` / `Phase88 Debug Codec Init`, which
-exist only in the RFC commit (`d2db56036`, deliberately kept out of the
-submission series).  With a normal build they simply find no such control.
+exist only in the separate RFC debug build (`d2db56036`, deliberately kept out
+of the submission series). The installable `module-kit` no longer includes
+these writable controls; a previously loaded diagnostic module retains them
+until a safe reload or reboot. With a normal build these scripts skip the
+expander-only checks.
 
 ## One-shot boot verification
 
-`phase88-postboot.sh` (+ `phase88-postboot.service`) runs the whole chain after
-a reboot, writes `../logs/POSTBOOT.done`, then disables and masks itself.  Use
-it when a change touches boot behaviour; it is not part of normal operation.
+`phase88-postboot.sh` is an optional diagnostic, not part of normal boot. The
+installed `phase88-postboot.service` is intentionally disabled and masked; the
+script no longer creates a log directory or writes log files if run manually.

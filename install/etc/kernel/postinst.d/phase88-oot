@@ -10,7 +10,7 @@
 # the exit status is always 0.
 
 KVER="${1:-}"
-SCRIPT=/root/terratec/scripts/phase88-module-install.sh
+SCRIPT=/root/terratec-phase88-rack-pci-linux-driver/scripts/phase88-install-module.sh
 LOG=/var/log/phase88-kernel-hook.log
 
 {

@@ -1,18 +1,15 @@
 #!/bin/bash
-# One-shot post-boot check of the patched PHASE 88 driver, run by
-# phase88-postboot.service after a reboot.  Disables itself when done.
+# Optional one-shot check of the patched PHASE 88 driver. The installed
+# phase88-postboot.service is disabled and masked; this script writes no files.
 #
-#   manual:  /root/terratec/scripts/phase88-postboot.sh
+#   manual:  scripts/phase88-postboot.sh
 #
-# Everything that touches ALSA is wrapped in timeout(1).  Analog inputs 1..8
+# Everything that touches ALSA is wrapped in timeout(1). Analog inputs 1..8
 # can only be judged with a real source attached, so this script checks that
 # the Line/Mic switches exist and are writable, and proves the digital path
 # (playback -> Envy24 monitor -> capture 11/12) through JACK.
 set -u
-LOGDIR=/root/terratec/logs
-LOG=$LOGDIR/postboot-$(date +%Y%m%d-%H%M%S).log
-mkdir -p "$LOGDIR"
-exec > >(tee "$LOG") 2>&1
+SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
 
 T() { timeout -s KILL "${TMO:-20}" "$@"; }
 ok()   { echo "  [ok]   $*"; }
@@ -44,7 +41,7 @@ else
 fi
 
 # ------------------------------------------------------------ module
-if /root/terratec/scripts/phase88-verify.sh "${CARD:-0}"; then
+if PHASE88_NO_FILE_LOG=1 "$SCRIPT_DIR/phase88-verify.sh" "${CARD:-0}"; then
 	ok "phase88-verify.sh passed"
 else
 	bad "phase88-verify.sh reported failures"
@@ -76,11 +73,11 @@ else
 	# ("Audio device hw:Phase88 cannot be acquired...")
 	export JACK_NO_AUDIO_RESERVATION=1
 	/usr/bin/jackd -dalsa -dhw:Phase88 -r 48000 -p 1024 -n 2 \
-		> "$LOGDIR/jackd-postboot.log" 2>&1 &
+		> /dev/null 2>&1 &
 	JACK_OWN=1
 	sleep 5
 fi
-if T timeout 25 /root/terratec/scripts/phase88-jack-meter.sh --selftest 4; then
+if T timeout 25 "$SCRIPT_DIR/phase88-jack-meter.sh" --selftest 4; then
 	ok "jack meter selftest ran"
 else
 	bad "jack meter selftest failed"
@@ -89,10 +86,7 @@ fi
 
 echo
 echo "### RESULT: $([ $FAILED -eq 0 ] && echo 'all checks passed' || echo "$FAILED problem(s)")"
-echo "log: $LOG"
-
 # ------------------------------------------------------------ disarm
 systemctl disable phase88-postboot.service >/dev/null 2>&1
-systemctl mask phase88-postboot.service >/dev/null 2>&1
-echo "phase88-postboot.service disabled and masked (re-enable with: systemctl unmask --now phase88-postboot.service)"
-echo "$LOG" > /root/terratec/logs/POSTBOOT.done
+systemctl mask --force phase88-postboot.service >/dev/null 2>&1
+echo "phase88-postboot.service disabled and masked"
