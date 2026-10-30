@@ -1,0 +1,305 @@
+diff --git a/sound/pci/ice1712/ews.c b/sound/pci/ice1712/ews.c
+index 1dffcb0..5a44bfa 100644
+--- a/sound/pci/ice1712/ews.c
++++ b/sound/pci/ice1712/ews.c
+@@ -32,6 +32,8 @@ enum {
+ /* additional i2c devices for EWS boards */
+ struct ews_spec {
+ 	struct snd_i2c_device *i2cdevs[3];
++	unsigned char pcf8575_data;	/* PHASE 88: shadow of the chip select byte */
++	unsigned char pcf8575_input;	/* PHASE 88: shadow of the input select byte */
+ };
+ 
+ /*
+@@ -128,12 +130,94 @@ static struct snd_i2c_bit_ops snd_ice1712_ewx_cs8427_bit_ops = {
+  * AK4524 access
+  */
+ 
++/* The PHASE 88 chip-select expander is write-only; keep a shadow value. */
++/* The bit-banged bus takes gpio_mutex internally; don't hold it here. */
++static int snd_ice1712_phase88_write(struct snd_ice1712 *ice,
++				     unsigned char page, unsigned char value)
++{
++	struct ews_spec *spec = ice->spec;
++	unsigned char bytes[2];
++	int err;
++
++	bytes[0] = page;
++	bytes[1] = value;
++	snd_i2c_lock(ice->i2c);
++	err = snd_i2c_sendbytes(spec->i2cdevs[EWS_I2C_PCF2], bytes, 2);
++	snd_i2c_unlock(ice->i2c);
++	if (err != 2) {
++		dev_err(ice->card->dev,
++			"PHASE 88 expander write failed (page 0x%02x, addr 0x%02x, err %d)\n",
++			page, spec->i2cdevs[EWS_I2C_PCF2]->addr, err);
++		return -EIO;
++	}
++	return 0;
++}
++
++static int snd_ice1712_phase88_chip_select(struct snd_ice1712 *ice, int chip_mask)
++{
++	struct ews_spec *spec = ice->spec;
++	unsigned char data;
++	int err;
++
++	if (snd_BUG_ON(chip_mask < 0 || chip_mask > 0x0f))
++		return -EINVAL;
++	data = (spec->pcf8575_data & 0xf0) | chip_mask;
++	err = snd_ice1712_phase88_write(ice, ICE1712_PHASE88_OUTPUT_PAGE,
++					data);
++	if (err >= 0)
++		spec->pcf8575_data = data;
++	return err;
++}
++
++/* PHASE 88 Line/Mic bits are ordered 7/8 to 1/2 (0x10 to 0x80). */
++static int snd_ice1712_phase88_linemic_get(struct snd_kcontrol *kcontrol,
++					   struct snd_ctl_elem_value *ucontrol)
++{
++	struct snd_ice1712 *ice = snd_kcontrol_chip(kcontrol);
++	struct ews_spec *spec = ice->spec;
++
++	ucontrol->value.integer.value[0] =
++		!!(spec->pcf8575_input & (0x80 >> kcontrol->private_value));
++	return 0;
++}
++
++static int snd_ice1712_phase88_linemic_put(struct snd_kcontrol *kcontrol,
++					   struct snd_ctl_elem_value *ucontrol)
++{
++	struct snd_ice1712 *ice = snd_kcontrol_chip(kcontrol);
++	struct ews_spec *spec = ice->spec;
++	unsigned char bit = 0x80 >> kcontrol->private_value;
++	unsigned char val = ucontrol->value.integer.value[0] ?
++		spec->pcf8575_input | bit : spec->pcf8575_input & ~bit;
++	int err;
++
++	if (val == spec->pcf8575_input)
++		return 0;
++	err = snd_ice1712_phase88_write(ice, ICE1712_PHASE88_INPUT_PAGE, val);
++	if (err < 0)
++		return err;
++	spec->pcf8575_input = val;
++	return 1;
++}
++
++static const struct snd_kcontrol_new snd_ice1712_phase88_linemic_ctl = {
++	.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
++	.name = "Line/Mic 7/8 Switch",
++	.info = snd_ctl_boolean_mono_info,
++	.get = snd_ice1712_phase88_linemic_get,
++	.put = snd_ice1712_phase88_linemic_put,
++	.private_value = 3,		/* bit 0x10: the pair nothing else drives */
++};
++
+ /* AK4524 chip select; address 0x48 bit 0-3 */
+ static int snd_ice1712_ews88mt_chip_select(struct snd_ice1712 *ice, int chip_mask)
+ {
+ 	struct ews_spec *spec = ice->spec;
+ 	unsigned char data, ndata;
+ 
++	if (ice->eeprom.subvendor == ICE1712_SUBDEVICE_PHASE88)
++		return snd_ice1712_phase88_chip_select(ice, chip_mask);
++
+ 	if (snd_BUG_ON(chip_mask < 0 || chip_mask > 0x0f))
+ 		return -EINVAL;
+ 	snd_i2c_lock(ice->i2c);
+@@ -458,9 +542,31 @@ static int snd_ice1712_ews_init(struct snd_ice1712 *ice)
+ 		}
+ 		snd_ice1712_6fire_write_pca(ice, PCF9554_REG_CONFIG, 0x80);
+ 		break;
++	case ICE1712_SUBDEVICE_PHASE88:
++		err = snd_i2c_device_create(ice->i2c, "CS8404",
++					    ICE1712_EWS88MT_CS8404_ADDR,
++					    &spec->i2cdevs[EWS_I2C_CS8404]);
++		if (err < 0)
++			return err;
++		err = snd_i2c_device_create(ice->i2c, "Output expander",
++					    ICE1712_PHASE88_OUTPUT_ADDR,
++					    &spec->i2cdevs[EWS_I2C_PCF2]);
++		if (err < 0)
++			return err;
++		spec->pcf8575_data = ICE1712_PHASE88_OUTPUT_INIT;
++		/* Check if the chip select expander is present */
++		err = snd_ice1712_ews88mt_chip_select(ice, 0x0f);
++		if (err < 0)
++			return err;
++		/* Clear the input register before codec setup. */
++		spec->pcf8575_input = ICE1712_PHASE88_INPUT_INIT;
++		err = snd_ice1712_phase88_write(ice, ICE1712_PHASE88_INPUT_PAGE,
++						spec->pcf8575_input);
++		if (err < 0)
++			return err;
++		break;
+ 	case ICE1712_SUBDEVICE_EWS88MT:
+ 	case ICE1712_SUBDEVICE_EWS88MT_NEW:
+-	case ICE1712_SUBDEVICE_PHASE88:
+ 	case ICE1712_SUBDEVICE_TS88:
+ 
+ 		err = snd_i2c_device_create(ice->i2c, "CS8404",
+@@ -982,9 +1088,15 @@ static int snd_ice1712_ews_add_controls(struct snd_ice1712 *ice)
+ 				return err;
+ 		}
+ 		break;
++	case ICE1712_SUBDEVICE_PHASE88:
++		/* The PHASE 88 has no EWS88MT sensitivity controls. */
++		err = snd_ctl_add(ice->card,
++				  snd_ctl_new1(&snd_ice1712_phase88_linemic_ctl, ice));
++		if (err < 0)
++			return err;
++		break;
+ 	case ICE1712_SUBDEVICE_EWS88MT:
+ 	case ICE1712_SUBDEVICE_EWS88MT_NEW:
+-	case ICE1712_SUBDEVICE_PHASE88:
+ 	case ICE1712_SUBDEVICE_TS88:
+ 		err = snd_ctl_add(ice->card, snd_ctl_new1(&snd_ice1712_ews88mt_input_sense, ice));
+ 		if (err < 0)
+@@ -1012,6 +1124,27 @@ static int snd_ice1712_ews_add_controls(struct snd_ice1712 *ice)
+ }
+ 
+ 
++static int snd_ice1712_ews_eeprom_init(struct snd_ice1712 *ice)
++{
++	switch (ice->eeprom.subvendor) {
++	case ICE1712_SUBDEVICE_DMX6FIRE:
++		if (!ice->dxr_enable) {
++			/* Limit active ADCs and DACs to 6, and disable AC'97
++			 * as the standard 6fire card/box has no hardware for it.
++			 */
++			ice->eeprom.data[ICE_EEP1_CODEC] = 0x3a;
++		}
++		break;
++	case ICE1712_SUBDEVICE_PHASE88:
++		/* No consumer AC'97 codec on PHASE 88. */
++		ice->eeprom.data[ICE_EEP1_CODEC] |= ICE1712_CFG_NO_CON_AC97;
++		/* Enable the rear MIDI UART. */
++		ice->eeprom.data[ICE_EEP1_CODEC] |= ICE1712_CFG_2xMPU401;
++		break;
++	}
++	return 0;
++}
++
+ /* entry point */
+ struct snd_ice1712_card_info snd_ice1712_ews_cards[] = {
+ 	{
+@@ -1039,13 +1172,14 @@ struct snd_ice1712_card_info snd_ice1712_ews_cards[] = {
+ 		.subvendor = ICE1712_SUBDEVICE_PHASE88,
+ 		.name = "TerraTec Phase88",
+ 		.model = "phase88",
++		.eeprom_init = snd_ice1712_ews_eeprom_init,
+ 		.chip_init = snd_ice1712_ews_init,
+ 		.build_controls = snd_ice1712_ews_add_controls,
+ 	},
+ 	{
+ 		.subvendor = ICE1712_SUBDEVICE_TS88,
+ 		.name = "terrasoniq TS88",
+-		.model = "phase88",
++		.model = "ts88",
+ 		.chip_init = snd_ice1712_ews_init,
+ 		.build_controls = snd_ice1712_ews_add_controls,
+ 	},
+@@ -1060,6 +1194,7 @@ struct snd_ice1712_card_info snd_ice1712_ews_cards[] = {
+ 		.subvendor = ICE1712_SUBDEVICE_DMX6FIRE,
+ 		.name = "TerraTec DMX6Fire",
+ 		.model = "dmx6fire",
++		.eeprom_init = snd_ice1712_ews_eeprom_init,
+ 		.chip_init = snd_ice1712_ews_init,
+ 		.build_controls = snd_ice1712_ews_add_controls,
+ 		.mpu401_1_name = "MIDI-Front DMX6fire",
+diff --git a/sound/pci/ice1712/ews.h b/sound/pci/ice1712/ews.h
+index aec8dc6..6f97e2f 100644
+--- a/sound/pci/ice1712/ews.h
++++ b/sound/pci/ice1712/ews.h
+@@ -58,6 +58,13 @@ extern struct snd_ice1712_card_info snd_ice1712_ews_cards[];
+ #define ICE1712_EWS88MT_OUTPUT_SENSE	0x40	/* mask */
+ #define ICE1712_EWS88D_PCF_ADDR		(0x40>>1)
+ 
++/* TerraTec PHASE 88 configuration definitions */
++#define ICE1712_PHASE88_OUTPUT_ADDR	(0x42 >> 1)
++#define ICE1712_PHASE88_OUTPUT_PAGE	0x01	/* output register */
++#define ICE1712_PHASE88_OUTPUT_INIT	0x20	/* initial output state */
++#define ICE1712_PHASE88_INPUT_PAGE	0x03	/* input register */
++#define ICE1712_PHASE88_INPUT_INIT	0x00	/* line inputs */
++
+ /* TerraTec DMX 6Fire configuration definitions */
+ #define ICE1712_6FIRE_AK4524_CS_MASK	0x07	/* AK4524 chip select #1-#3 */
+ #define ICE1712_6FIRE_RW		0x08	/* read/write switch for i2c; high = write  */
+diff --git a/sound/pci/ice1712/ice1712.c b/sound/pci/ice1712/ice1712.c
+index 376df1a..d63b235 100644
+--- a/sound/pci/ice1712/ice1712.c
++++ b/sound/pci/ice1712/ice1712.c
+@@ -768,6 +768,9 @@ static int snd_ice1712_capture_open(struct snd_pcm_substream *substream)
+ 	struct snd_pcm_runtime *runtime = substream->runtime;
+ 	struct snd_ice1712 *ice = snd_pcm_substream_chip(substream);
+ 
++	if (!ice->ac97)
++		return -ENODEV;
++
+ 	ice->capture_con_substream = substream;
+ 	runtime->hw = snd_ice1712_capture;
+ 	runtime->hw.rates = ice->ac97->rates[AC97_RATES_ADC];
+@@ -2283,19 +2286,28 @@ static int snd_ice1712_read_eeprom(struct snd_ice1712 *ice,
+ 
+ 
+ 
++static int snd_ice1712_init_eeprom(struct snd_ice1712 *ice)
++{
++	const struct snd_ice1712_card_info * const *tbl, *c;
++
++	for (tbl = card_tables; *tbl; tbl++) {
++		for (c = *tbl; c->subvendor; c++) {
++			if (c->subvendor != ice->eeprom.subvendor)
++				continue;
++			if (c->eeprom_init)
++				return c->eeprom_init(ice);
++			return 0;
++		}
++	}
++	return 0;
++}
++
+ static int snd_ice1712_chip_init(struct snd_ice1712 *ice)
+ {
+ 	outb(ICE1712_RESET | ICE1712_NATIVE, ICEREG(ice, CONTROL));
+ 	udelay(200);
+ 	outb(ICE1712_NATIVE, ICEREG(ice, CONTROL));
+ 	udelay(200);
+-	if (ice->eeprom.subvendor == ICE1712_SUBDEVICE_DMX6FIRE &&
+-	    !ice->dxr_enable)
+-		/*  Set eeprom value to limit active ADCs and DACs to 6;
+-		 *  Also disable AC97 as no hardware in standard 6fire card/box
+-		 *  Note: DXR extensions are not currently supported
+-		 */
+-		ice->eeprom.data[ICE_EEP1_CODEC] = 0x3a;
+ 	pci_write_config_byte(ice->pci, 0x60, ice->eeprom.data[ICE_EEP1_CODEC]);
+ 	pci_write_config_byte(ice->pci, 0x61, ice->eeprom.data[ICE_EEP1_ACLINK]);
+ 	pci_write_config_byte(ice->pci, 0x62, ice->eeprom.data[ICE_EEP1_I2SID]);
+@@ -2502,8 +2514,12 @@ static int snd_ice1712_create(struct snd_card *card,
+ 	card->sync_irq = ice->irq;
+ 	card->private_free = snd_ice1712_free;
+ 
+-	if (snd_ice1712_read_eeprom(ice, modelname) < 0)
+-		return -EIO;
++	err = snd_ice1712_read_eeprom(ice, modelname);
++	if (err < 0)
++		return err;
++	err = snd_ice1712_init_eeprom(ice);
++	if (err < 0)
++		return err;
+ 	if (snd_ice1712_chip_init(ice) < 0)
+ 		return -EIO;
+ 
+diff --git a/sound/pci/ice1712/ice1712.h b/sound/pci/ice1712/ice1712.h
+index cd02710..6e9c13b 100644
+--- a/sound/pci/ice1712/ice1712.h
++++ b/sound/pci/ice1712/ice1712.h
+@@ -509,6 +509,7 @@ struct snd_ice1712_card_info {
+ 	const char *name;
+ 	const char *model;
+ 	const char *driver;
++	int (*eeprom_init)(struct snd_ice1712 *ice);
+ 	int (*chip_init)(struct snd_ice1712 *);
+ 	void (*chip_exit)(struct snd_ice1712 *);
+ 	int (*build_controls)(struct snd_ice1712 *);

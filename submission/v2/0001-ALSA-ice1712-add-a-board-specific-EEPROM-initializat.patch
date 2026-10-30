@@ -1,0 +1,114 @@
+From d8688c09c3c0c18aa0615a1a118130c9617f7b60 Mon Sep 17 00:00:00 2001
+From: Davide Gironi <davide.gironi@gmail.com>
+Date: Thu, 29 Oct 2026 08:21:17 +0100
+Subject: [PATCH v2 1/2] ALSA: ice1712: add a board-specific EEPROM
+ initialization hook
+
+Add an eeprom_init callback to card info and call it after reading the
+
+EEPROM but before generic chip setup. Move the existing DMX6Fire fixup
+
+into the EWS driver.
+---
+ sound/pci/ice1712/ews.c     | 12 ++++++++++++
+ sound/pci/ice1712/ice1712.c | 31 ++++++++++++++++++++++---------
+ sound/pci/ice1712/ice1712.h |  1 +
+ 3 files changed, 35 insertions(+), 9 deletions(-)
+
+diff --git a/sound/pci/ice1712/ews.c b/sound/pci/ice1712/ews.c
+index 1dffcb0..8d0d8e9 100644
+--- a/sound/pci/ice1712/ews.c
++++ b/sound/pci/ice1712/ews.c
+@@ -1012,6 +1012,17 @@ static int snd_ice1712_ews_add_controls(struct snd_ice1712 *ice)
+ }
+ 
+ 
++static int snd_ice1712_ews_eeprom_init(struct snd_ice1712 *ice)
++{
++	if (ice->eeprom.subvendor == ICE1712_SUBDEVICE_DMX6FIRE &&
++	    !ice->dxr_enable)
++		/* Set EEPROM value to limit active ADCs and DACs to 6;
++		 * also disable AC97 as no hardware in standard 6fire card/box.
++		 */
++		ice->eeprom.data[ICE_EEP1_CODEC] = 0x3a;
++	return 0;
++}
++
+ /* entry point */
+ struct snd_ice1712_card_info snd_ice1712_ews_cards[] = {
+ 	{
+@@ -1059,6 +1070,7 @@ struct snd_ice1712_card_info snd_ice1712_ews_cards[] = {
+ 	{
+ 		.subvendor = ICE1712_SUBDEVICE_DMX6FIRE,
+ 		.name = "TerraTec DMX6Fire",
++		.eeprom_init = snd_ice1712_ews_eeprom_init,
+ 		.model = "dmx6fire",
+ 		.chip_init = snd_ice1712_ews_init,
+ 		.build_controls = snd_ice1712_ews_add_controls,
+diff --git a/sound/pci/ice1712/ice1712.c b/sound/pci/ice1712/ice1712.c
+index 376df1a..6cc38ee 100644
+--- a/sound/pci/ice1712/ice1712.c
++++ b/sound/pci/ice1712/ice1712.c
+@@ -2283,19 +2283,28 @@ static int snd_ice1712_read_eeprom(struct snd_ice1712 *ice,
+ 
+ 
+ 
++static int snd_ice1712_init_eeprom(struct snd_ice1712 *ice)
++{
++	const struct snd_ice1712_card_info * const *tbl, *c;
++
++	for (tbl = card_tables; *tbl; tbl++) {
++		for (c = *tbl; c->subvendor; c++) {
++			if (c->subvendor != ice->eeprom.subvendor)
++				continue;
++			if (c->eeprom_init)
++				return c->eeprom_init(ice);
++			return 0;
++		}
++	}
++	return 0;
++}
++
+ static int snd_ice1712_chip_init(struct snd_ice1712 *ice)
+ {
+ 	outb(ICE1712_RESET | ICE1712_NATIVE, ICEREG(ice, CONTROL));
+ 	udelay(200);
+ 	outb(ICE1712_NATIVE, ICEREG(ice, CONTROL));
+ 	udelay(200);
+-	if (ice->eeprom.subvendor == ICE1712_SUBDEVICE_DMX6FIRE &&
+-	    !ice->dxr_enable)
+-		/*  Set eeprom value to limit active ADCs and DACs to 6;
+-		 *  Also disable AC97 as no hardware in standard 6fire card/box
+-		 *  Note: DXR extensions are not currently supported
+-		 */
+-		ice->eeprom.data[ICE_EEP1_CODEC] = 0x3a;
+ 	pci_write_config_byte(ice->pci, 0x60, ice->eeprom.data[ICE_EEP1_CODEC]);
+ 	pci_write_config_byte(ice->pci, 0x61, ice->eeprom.data[ICE_EEP1_ACLINK]);
+ 	pci_write_config_byte(ice->pci, 0x62, ice->eeprom.data[ICE_EEP1_I2SID]);
+@@ -2502,8 +2511,12 @@ static int snd_ice1712_create(struct snd_card *card,
+ 	card->sync_irq = ice->irq;
+ 	card->private_free = snd_ice1712_free;
+ 
+-	if (snd_ice1712_read_eeprom(ice, modelname) < 0)
+-		return -EIO;
++	err = snd_ice1712_read_eeprom(ice, modelname);
++	if (err < 0)
++		return err;
++	err = snd_ice1712_init_eeprom(ice);
++	if (err < 0)
++		return err;
+ 	if (snd_ice1712_chip_init(ice) < 0)
+ 		return -EIO;
+ 
+diff --git a/sound/pci/ice1712/ice1712.h b/sound/pci/ice1712/ice1712.h
+index cd02710..6e9c13b 100644
+--- a/sound/pci/ice1712/ice1712.h
++++ b/sound/pci/ice1712/ice1712.h
+@@ -509,6 +509,7 @@ struct snd_ice1712_card_info {
+ 	const char *name;
+ 	const char *model;
+ 	const char *driver;
++	int (*eeprom_init)(struct snd_ice1712 *ice);
+ 	int (*chip_init)(struct snd_ice1712 *);
+ 	void (*chip_exit)(struct snd_ice1712 *);
+ 	int (*build_controls)(struct snd_ice1712 *);

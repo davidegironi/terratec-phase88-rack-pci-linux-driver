@@ -1,0 +1,18 @@
+# TerraTec PHASE 88: one-shot verification after a reboot.
+# Disables and masks itself when it has run (see phase88-postboot.sh), so it
+# is not a permanent boot service.
+[Unit]
+Description=TerraTec PHASE 88: one-shot post-boot verification
+Documentation=file:/root/terratec-phase88-rack-pci-linux-driver/analysis/README.md
+Wants=phase88-audio.service
+After=phase88-audio.service
+
+[Service]
+Type=oneshot
+ExecStart=/root/terratec-phase88-rack-pci-linux-driver/scripts/phase88-postboot.sh
+TimeoutStartSec=240
+StandardOutput=null
+StandardError=null
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,47 @@
+Subject: [PATCH v2 0/2] ALSA: ice1712: support the TerraTec PHASE 88
+
+The TerraTec PHASE 88 uses different front-module hardware from the
+EWS88MT even though the ICE1712 driver identifies it as an EWS88MT variant.
+The PHASE 88's write-only expander does not respond at the EWS88MT
+addresses, and its EEPROM advertises a consumer AC'97 codec and one MIDI
+UART that are not representative of the board.
+
+Changes since v1, following Takashi Iwai's review:
+
+  - Add an early, card-specific EEPROM initialization callback and move the
+    existing DMX6Fire fixup out of generic chip initialization.
+  - Move the PHASE 88 AC'97 and second-MIDI UART EEPROM fixups into the EWS
+    driver callback, which runs before generic hardware setup.
+  - Keep a NULL guard in consumer capture open as a defensive fallback for
+    other boards whose EEPROM advertises AC'97 but whose codec fails to init.
+    The PHASE 88 EEPROM fixup prevents its nonexistent consumer PCM from being
+    created in the first place.
+  - Use snd_ctl_boolean_mono_info for the Line/Mic boolean control and fix
+    the PHASE 88 initialization indentation.
+  - Give TS88 its own model string, and update the PHASE 88 expander shadow
+    only after a successful write so an I2C error cannot corrupt it.
+  - Tighten PHASE 88 comments to match the surrounding driver style.
+
+The series has two patches: the callback/refactoring patch first, then the
+PHASE 88-specific changes.
+
+Testing on the machine with two PHASE 88 racks:
+
+  - Before the changes, scripts/phase88-verify.sh 0 and 1 both passed.
+  - After the changes, scripts/phase88-install-module.sh --dry-run built
+    cleanly for 6.12.113+deb13-amd64; --reload installed and loaded the
+    cleaned module-kit; phase88-verify.sh 1 and 2 both passed (card 0 is now
+    the HDMI device).
+  - Both PHASE 88 cards had no probe/AC'97 errors or kernel oops, exposed the
+    expected multi-track playback/capture devices without consumer PCM devices
+    or RFC debug controls, and passed the playback/capture DMA checks. The
+    slave card's 44.1 and 96 kHz playback refusals were expected because it
+    follows the master clock; the master passed all three rates.
+
+The series applies to the Linux 6.18.58 source and was built and
+hardware-tested against the running Debian 6.12.113 kernel. The PHASE 88
+MIDI loopback test was not rerun in this pass; the second-UART EEPROM bit is
+unchanged.
+
+Thanks,
+Davide Gironi

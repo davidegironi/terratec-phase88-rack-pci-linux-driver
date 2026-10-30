@@ -1,0 +1,136 @@
+From 86adec0998c78b78fd6decf18f1defbe0cf543ca Mon Sep 17 00:00:00 2001
+From: Davide Gironi <davide.gironi@gmail.com>
+Date: Fri, 16 Oct 2026 09:35:33 +0200
+Subject: [PATCH 5/6] ASoC: ice1712: add the PHASE 88 Line/Mic input switch
+
+The mixer of the original Terratec drivers offers a "Line/Mic" switch
+that engages the input preamplifier a microphone needs.  Without it a
+microphone stays about 30 dB below the level the Windows mixer delivers,
+so the pair it is connected to looks nearly dead.
+
+The setting is bit 4 of the second expander register that the previous
+commit initialises.  With a microphone on input 7 that pair measures
+-74 dBFS with the bit clear and about -34 dBFS with it set: +40.8 dB on
+channel 7 and +30.3 dB on channel 8, while every other channel stays
+within a dB of the same level either way.  The other bits of the
+register (0x01, 0x02, 0x04, 0x08, alone or combined with 0x10) change
+nothing measurable, and the Terratec drivers keep a single boolean for
+this board, so only this switch is exposed.  The register is write-only,
+so the value is composed from the shadow copy that the chip select code
+maintains.
+
+The switch is created for the PHASE 88 only.  The EWS88MT and the EWS88D
+keep their "Input Sensitivity" switches, which are driven by a PCF8575
+that these boards carry and the PHASE 88 does not.
+---
+ sound/pci/ice1712/ews.c | 71 ++++++++++++++++++++++++++++++++++++++++-
+ sound/pci/ice1712/ews.h |  3 +-
+ 2 files changed, 72 insertions(+), 2 deletions(-)
+
+diff --git a/sound/pci/ice1712/ews.c b/sound/pci/ice1712/ews.c
+index 7878d5ef3..ac36370aa 100644
+--- a/sound/pci/ice1712/ews.c
++++ b/sound/pci/ice1712/ews.c
+@@ -181,6 +181,70 @@ static int snd_ice1712_phase88_chip_select(struct snd_ice1712 *ice, int chip_mas
+ 	return err;
+ }
+ 
++/*
++ * PHASE 88: Line/Mic select of the four analog input pairs
++ *
++ * The Terratec mixers of the original operating systems offer a "Line/Mic
++ * 1/2 ... 7/8" switch for every pair of the AK4524 codecs; the setting is
++ * kept in the second register of the chip select expander.
++ *
++ * With a microphone on input 7 the level of that pair rises by roughly
++ * 30 dB when bit 4 (0x10) of this register is set, while bits 5 ... 7 do
++ * not change anything that could be measured on the other pairs - only the
++ * pair with the microphone attached could be verified.  The register is
++ * write-only, so the bits are assumed to be ordered from the last pair to
++ * the first one: 0x10 selects the microphone of pair 7/8, 0x80 the one of
++ * pair 1/2.
++ */
++static int snd_ice1712_phase88_linemic_info(struct snd_kcontrol *kcontrol,
++					    struct snd_ctl_elem_info *uinfo)
++{
++	uinfo->type = SNDRV_CTL_ELEM_TYPE_BOOLEAN;
++	uinfo->count = 1;
++	uinfo->value.integer.min = 0;
++	uinfo->value.integer.max = 1;
++	return 0;
++}
++
++static int snd_ice1712_phase88_linemic_get(struct snd_kcontrol *kcontrol,
++					   struct snd_ctl_elem_value *ucontrol)
++{
++	struct snd_ice1712 *ice = snd_kcontrol_chip(kcontrol);
++	struct ews_spec *spec = ice->spec;
++
++	ucontrol->value.integer.value[0] =
++		!!(spec->pcf8575_input & (0x80 >> kcontrol->private_value));
++	return 0;
++}
++
++static int snd_ice1712_phase88_linemic_put(struct snd_kcontrol *kcontrol,
++					   struct snd_ctl_elem_value *ucontrol)
++{
++	struct snd_ice1712 *ice = snd_kcontrol_chip(kcontrol);
++	struct ews_spec *spec = ice->spec;
++	unsigned char bit = 0x80 >> kcontrol->private_value;
++	unsigned char val = ucontrol->value.integer.value[0] ?
++		spec->pcf8575_input | bit : spec->pcf8575_input & ~bit;
++	int err;
++
++	if (val == spec->pcf8575_input)
++		return 0;
++	err = snd_ice1712_phase88_write(ice, ICE1712_PHASE88_INPUT_PAGE, val);
++	if (err < 0)
++		return err;
++	spec->pcf8575_input = val;
++	return 1;
++}
++
++static const struct snd_kcontrol_new snd_ice1712_phase88_linemic_ctl = {
++	.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
++	.name = "Line/Mic 7/8 Switch",
++	.info = snd_ice1712_phase88_linemic_info,
++	.get = snd_ice1712_phase88_linemic_get,
++	.put = snd_ice1712_phase88_linemic_put,
++	.private_value = 3,		/* bit 0x10: the pair nothing else drives */
++};
++
+ /* AK4524 chip select; address 0x48 bit 0-3 */
+ static int snd_ice1712_ews88mt_chip_select(struct snd_ice1712 *ice, int chip_mask)
+ {
+@@ -1070,8 +1134,13 @@ static int snd_ice1712_ews_add_controls(struct snd_ice1712 *ice)
+ 		/*
+ 		 * The PHASE 88 has neither the input sensitivity expander on
+ 		 * 0x23 nor the output expander on 0x24 of the EWS88MT, so the
+-		 * corresponding switches must not be created here.
++		 * corresponding switches must not be created here; instead
++		 * the Line/Mic select of the codec pairs is offered.
+ 		 */
++		err = snd_ctl_add(ice->card,
++				  snd_ctl_new1(&snd_ice1712_phase88_linemic_ctl, ice));
++		if (err < 0)
++			return err;
+ 		break;
+ 	case ICE1712_SUBDEVICE_EWS88MT:
+ 	case ICE1712_SUBDEVICE_EWS88MT_NEW:
+diff --git a/sound/pci/ice1712/ews.h b/sound/pci/ice1712/ews.h
+index f0cd01bad..48b19c133 100644
+--- a/sound/pci/ice1712/ews.h
++++ b/sound/pci/ice1712/ews.h
+@@ -78,7 +78,8 @@ extern struct snd_ice1712_card_info snd_ice1712_ews_cards[];
+  * once while they initialise a "type 8" board ({0x03, 0x00} written to
+  * 8-bit 0x42).  The latch of the expander is undefined after power on and
+  * the AK4524 codecs stay silent when it is left alone, so it has to be
+- * written before the codecs are set up.
++ * written before the codecs are set up.  Its four upper bits select either
++ * the line input or the microphone input of the four codec pairs.
+  */
+ #define ICE1712_PHASE88_INPUT_PAGE	0x03
+ #define ICE1712_PHASE88_INPUT_INIT	0x00
+-- 
+2.47.3
+
